@@ -4,7 +4,8 @@ import React from "react";
 export default function TabLayout() {
   return (
     <Stack>
-      <Stack.Screen name="index" />
+      <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="register" options={{ headerShown: false }} />
     </Stack>
   );
 }

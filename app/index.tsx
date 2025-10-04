@@ -1,4 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React from "react";
 import {
   ImageBackground,
@@ -26,6 +27,17 @@ export default function HomeScreen() {
               <Text style={styles.brandName}>EV Service</Text>
               <Text style={styles.brandSubtitle}>Management System</Text>
             </View>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.headerLoginButton}
+              onPress={() => router.push("/login/login")}
+            >
+              <Feather name="user" size={24} color="#4CAF50" />
+              <View>
+                <Text style={styles.loginText}>Đăng nhập</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -120,7 +132,10 @@ export default function HomeScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.ctaButton}>
+              <TouchableOpacity
+                style={styles.ctaButton}
+                onPress={() => router.push("/service/service")}
+              >
                 <Ionicons name="arrow-forward" size={20} color="white" />
                 <Text style={styles.ctaButtonText}>Đặt lịch bảo dưỡng</Text>
               </TouchableOpacity>
@@ -188,6 +203,18 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  loginText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500",
+  },
+  headerLoginButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
   header: {
     flexDirection: "row",
