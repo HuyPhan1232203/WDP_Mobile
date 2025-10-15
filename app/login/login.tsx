@@ -1,6 +1,7 @@
+import api from "@/config/axios";
+import { tokenStorage } from "@/utils/tokenStorage";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -16,7 +17,6 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
-import { auth } from "../../config/firebase";
 
 const Login = () => {
   const router = useRouter();
@@ -35,50 +35,39 @@ const Login = () => {
       return;
     }
 
-    if (username.length < 4) {
-      Toast.show({
-        type: "error",
-        text1: "Lỗi",
-        text2: "Username phải có ít nhất 4 ký tự",
-      });
-      return;
-    }
-
-    if (password.length < 8) {
-      Toast.show({
-        type: "error",
-        text1: "Lỗi",
-        text2: "Mật khẩu phải có ít nhất 8 ký tự",
-      });
-      return;
-    }
-
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        username + "@example.com", // Assuming username is email prefix
-        password
-      );
+      const response = await api.post("users/login", {
+        username: username,
+        password,
+      });
+      console.log(response);
+      // Lấy token từ response
+      const { accessToken } = response.data; // Giả sử API trả về { token, user }
+
+      // Lưu token vào SecureStore
+      await tokenStorage.saveToken(accessToken);
+
       Toast.show({
         type: "success",
-        text1: "Đăng nhập thành công!",
-        text2: `Chào mừng ${userCredential.user.email}`,
+        text1: "Đăng nhập thành công",
+        text2: `Chào mừng ${username}!`,
       });
+
       // Navigate to customer/dashboard
-      // router.push("/customer");
+      router.push("/customerHome/customerHome");
     } catch (error: any) {
       console.error("Login Error:", error);
       Toast.show({
         type: "error",
         text1: "Đăng nhập thất bại",
-        text2: error.message || "Vui lòng thử lại",
+        text2:
+          error.response?.data?.message || error.message || "Vui lòng thử lại",
       });
     } finally {
       setLoading(false);
     }
   };
-
   const handleGoogleLogin = async () => {
     // Implement Google login here
     Toast.show({

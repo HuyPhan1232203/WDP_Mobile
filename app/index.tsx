@@ -18,174 +18,180 @@ export default function HomeScreen() {
         style={styles.fixedBackground}
         imageStyle={styles.heroBackgroundImage}
       />
-      <ScrollView style={styles.scrollView}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Ionicons name="car-outline" size={24} color="#4CAF50" />
-            <View>
-              <Text style={styles.brandName}>EV Service</Text>
-              <Text style={styles.brandSubtitle}>Management System</Text>
-            </View>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.headerLoginButton}
-              onPress={() => router.push("/login/login")}
-            >
-              <Feather name="user" size={24} color="#4CAF50" />
+      <View style={{ flex: 1 }}>
+        <ScrollView style={styles.scrollView}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Ionicons name="car-outline" size={24} color="#4CAF50" />
               <View>
-                <Text style={styles.loginText}>Đăng nhập</Text>
+                <Text style={styles.brandName}>EV Service</Text>
+                <Text style={styles.brandSubtitle}>Management System</Text>
               </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <View style={styles.heroOverlay}>
-            <View style={styles.heroContent}>
-              <View style={styles.breadcrumb}>
-                <Ionicons name="home" size={16} color="#4CAF50" />
-                <Text style={styles.breadcrumbText}>
-                  Hệ thống quản lý bảo dưỡng xe điện
-                </Text>
-              </View>
-
-              <Text style={styles.heroTitle}>
-                <Text style={styles.heroTitleGreen}>
-                  EV Service Center{"\n"}
-                </Text>
-                <Text style={styles.heroTitleDark}>Management System</Text>
-              </Text>
-
-              <Text style={styles.heroDescription}>
-                Giải pháp toàn diện cho trung tâm dịch vụ xe điện - từ đặt lịch
-                bảo dưỡng đến quản lý quy trình, tối ưu hóa hiệu quả và trải
-                nghiệm khách hàng.
-              </Text>
-
-              <View style={styles.featuresList}>
-                <View style={styles.featuresColumn}>
-                  <View style={styles.featureItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color="#4CAF50"
-                    />
-                    <Text style={styles.featureText}>
-                      Quản lý lịch bảo dưỡng tự động
-                    </Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color="#4CAF50"
-                    />
-                    <Text style={styles.featureText}>
-                      Đặt lịch dịch vụ online dễ dàng
-                    </Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color="#4CAF50"
-                    />
-                    <Text style={styles.featureText}>
-                      Lịch sử bảo dưỡng chi tiết
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.featuresColumn}>
-                  <View style={styles.featureItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color="#4CAF50"
-                    />
-                    <Text style={styles.featureText}>
-                      Theo dõi trạng thái xe điện real-time
-                    </Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color="#4CAF50"
-                    />
-                    <Text style={styles.featureText}>
-                      Thanh toán điện tử an toàn
-                    </Text>
-                  </View>
-                  <View style={styles.featureItem}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={20}
-                      color="#4CAF50"
-                    />
-                    <Text style={styles.featureText}>
-                      Nhắc nhở bảo dưỡng thông minh
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
+            </View>
+            <View style={styles.headerRight}>
               <TouchableOpacity
-                style={styles.ctaButton}
-                onPress={() => router.push("/service/service")}
+                style={styles.headerLoginButton}
+                onPress={() => router.push("/login/login")}
               >
-                <Ionicons name="arrow-forward" size={20} color="white" />
-                <Text style={styles.ctaButtonText}>Đặt lịch bảo dưỡng</Text>
+                <Feather name="user" size={24} color="#4CAF50" />
+                <View>
+                  <Text style={styles.loginText}>Đăng nhập</Text>
+                </View>
               </TouchableOpacity>
             </View>
+          </View>
 
-            {/* Service Cards */}
-            <View style={styles.serviceCards}>
-              <View style={styles.serviceCard}>
-                <View style={styles.serviceIcon}>
-                  <Ionicons name="flash" size={24} color="#4CAF50" />
+          {/* Hero Section */}
+          <View style={styles.heroSection}>
+            <View style={styles.heroOverlay}>
+              <View style={styles.heroContent}>
+                <View style={styles.breadcrumb}>
+                  <Ionicons name="home" size={16} color="#4CAF50" />
+                  <Text style={styles.breadcrumbText}>
+                    Hệ thống quản lý bảo dưỡng xe điện
+                  </Text>
                 </View>
-                <Text style={styles.serviceTitle}>Công nghệ hiện đại</Text>
-                <Text style={styles.serviceDescription}>
-                  Thiết bị chẩn đoán EV tân tiến
+
+                <Text style={styles.heroTitle}>
+                  <Text style={styles.heroTitleGreen}>
+                    EV Service Center{"\n"}
+                  </Text>
+                  <Text style={styles.heroTitleDark}>Management System</Text>
                 </Text>
+
+                <Text style={styles.heroDescription}>
+                  Giải pháp toàn diện cho trung tâm dịch vụ xe điện - từ đặt
+                  lịch bảo dưỡng đến quản lý quy trình, tối ưu hóa hiệu quả và
+                  trải nghiệm khách hàng.
+                </Text>
+
+                <View style={styles.featuresList}>
+                  <View style={styles.featuresColumn}>
+                    <View style={styles.featureItem}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#4CAF50"
+                      />
+                      <Text style={styles.featureText}>
+                        Quản lý lịch bảo dưỡng tự động
+                      </Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#4CAF50"
+                      />
+                      <Text style={styles.featureText}>
+                        Đặt lịch dịch vụ online dễ dàng
+                      </Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#4CAF50"
+                      />
+                      <Text style={styles.featureText}>
+                        Lịch sử bảo dưỡng chi tiết
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.featuresColumn}>
+                    <View style={styles.featureItem}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#4CAF50"
+                      />
+                      <Text style={styles.featureText}>
+                        Theo dõi trạng thái xe điện real-time
+                      </Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#4CAF50"
+                      />
+                      <Text style={styles.featureText}>
+                        Thanh toán điện tử an toàn
+                      </Text>
+                    </View>
+                    <View style={styles.featureItem}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={20}
+                        color="#4CAF50"
+                      />
+                      <Text style={styles.featureText}>
+                        Nhắc nhở bảo dưỡng thông minh
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.ctaButton}
+                  onPress={() => router.push("/service/service")}
+                >
+                  <Ionicons name="arrow-forward" size={20} color="white" />
+                  <Text style={styles.ctaButtonText}>Đặt lịch bảo dưỡng</Text>
+                </TouchableOpacity>
               </View>
 
-              <View style={styles.serviceCard}>
-                <View style={styles.serviceIcon}>
-                  <Ionicons name="shield-checkmark" size={24} color="#4CAF50" />
+              {/* Service Cards */}
+              <View style={styles.serviceCards}>
+                <View style={styles.serviceCard}>
+                  <View style={styles.serviceIcon}>
+                    <Ionicons name="flash" size={24} color="#4CAF50" />
+                  </View>
+                  <Text style={styles.serviceTitle}>Công nghệ hiện đại</Text>
+                  <Text style={styles.serviceDescription}>
+                    Thiết bị chẩn đoán EV tân tiến
+                  </Text>
                 </View>
-                <Text style={styles.serviceTitle}>Bảo hành toàn diện</Text>
-                <Text style={styles.serviceDescription}>
-                  Cam kết chất lượng dịch vụ
-                </Text>
-              </View>
 
-              <View style={styles.serviceCard}>
-                <View style={styles.serviceIcon}>
-                  <Ionicons name="time" size={24} color="#4CAF50" />
+                <View style={styles.serviceCard}>
+                  <View style={styles.serviceIcon}>
+                    <Ionicons
+                      name="shield-checkmark"
+                      size={24}
+                      color="#4CAF50"
+                    />
+                  </View>
+                  <Text style={styles.serviceTitle}>Bảo hành toàn diện</Text>
+                  <Text style={styles.serviceDescription}>
+                    Cam kết chất lượng dịch vụ
+                  </Text>
                 </View>
-                <Text style={styles.serviceTitle}>Phục vụ 24/7</Text>
-                <Text style={styles.serviceDescription}>
-                  Hỗ trợ khẩn cấp mọi lúc
-                </Text>
-              </View>
 
-              <View style={styles.serviceCard}>
-                <View style={styles.serviceIcon}>
-                  <Ionicons name="people" size={24} color="#4CAF50" />
+                <View style={styles.serviceCard}>
+                  <View style={styles.serviceIcon}>
+                    <Ionicons name="time" size={24} color="#4CAF50" />
+                  </View>
+                  <Text style={styles.serviceTitle}>Phục vụ 24/7</Text>
+                  <Text style={styles.serviceDescription}>
+                    Hỗ trợ khẩn cấp mọi lúc
+                  </Text>
                 </View>
-                <Text style={styles.serviceTitle}>Đội ngũ chuyên nghiệp</Text>
-                <Text style={styles.serviceDescription}>
-                  Kỹ thuật viên được chứng nhận
-                </Text>
+
+                <View style={styles.serviceCard}>
+                  <View style={styles.serviceIcon}>
+                    <Ionicons name="people" size={24} color="#4CAF50" />
+                  </View>
+                  <Text style={styles.serviceTitle}>Đội ngũ chuyên nghiệp</Text>
+                  <Text style={styles.serviceDescription}>
+                    Kỹ thuật viên được chứng nhận
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
     </View>
   );
 }
