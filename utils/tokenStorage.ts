@@ -5,6 +5,7 @@ const TOKEN_KEY = "auth_token";
 export const tokenStorage = {
   async saveToken(token: string): Promise<void> {
     try {
+      console.log(token);
       await SecureStore.setItemAsync(TOKEN_KEY, token);
     } catch (error) {
       console.error("Error saving token:", error);

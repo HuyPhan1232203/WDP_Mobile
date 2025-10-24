@@ -1,4 +1,6 @@
 import api from "@/config/axios";
+import { fetchUserProfile } from "@/redux/feature/userSlice";
+import { AppDispatch } from "@/redux/store";
 import { tokenStorage } from "@/utils/tokenStorage";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
@@ -17,6 +19,9 @@ import {
   View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { useDispatch } from "react-redux";
+
+// WebBrowser.maybeCompleteAuthSession();
 
 const Login = () => {
   const router = useRouter();
@@ -25,12 +30,17 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // const [request, response, promptAsync] = Google.useAuthRequest({
+  //   webClientId:
+  //     "871536505605-7vpli169042ggstr7ejij0ql62qdmic7.apps.googleusercontent.com", // Thay bằng Web Client ID từ Firebase
+  // });
+  const dispatch = useDispatch<AppDispatch>();
   const handleEmailLogin = async () => {
     if (!username || !password) {
       Toast.show({
         type: "error",
         text1: "Lỗi",
-        text2: "Vui lòng nhập username và mật khẩu",
+        text2: "Vui lòng nhập tên đăng nhập và mật khẩu",
       });
       return;
     }
@@ -41,11 +51,7 @@ const Login = () => {
         username: username,
         password,
       });
-      console.log(response);
-      // Lấy token từ response
-      const { accessToken } = response.data; // Giả sử API trả về { token, user }
-
-      // Lưu token vào SecureStore
+      const { accessToken } = response.data;
       await tokenStorage.saveToken(accessToken);
 
       Toast.show({
@@ -53,8 +59,7 @@ const Login = () => {
         text1: "Đăng nhập thành công",
         text2: `Chào mừng ${username}!`,
       });
-
-      // Navigate to customer/dashboard
+      dispatch(fetchUserProfile());
       router.push("/customerHome/customerHome");
     } catch (error: any) {
       console.error("Login Error:", error);
@@ -68,14 +73,62 @@ const Login = () => {
       setLoading(false);
     }
   };
-  const handleGoogleLogin = async () => {
-    // Implement Google login here
-    Toast.show({
-      type: "info",
-      text1: "Tính năng đang phát triển",
-      text2: "Google login sẽ được thêm sau",
-    });
-  };
+  // Xử lý response từ Google Auth
+  // useEffect(() => {
+  //   if (response?.type === "success") {
+  //     const { id_token } = response.params;
+  //     handleGoogleAuthSuccess(idToken);
+  //   }
+  // }, [response]);
+  // const handleGoogleAuthSuccess = async (idToken: string) => {
+  //   setLoading(true);
+  //   try {
+  //     // Tạo credential cho Firebase
+  //     const credential = GoogleAuthProvider.credential(idToken);
+
+  //     // Đăng nhập với Firebase
+  //     const userCredential = await signInWithCredential(auth, credential);
+  //     const firebaseUser = userCredential.user;
+
+  //     // Gửi idToken đến backend
+  //     const backendResponse = await api.post("users/loginGoogle", {
+  //       idToken: idToken,
+  //     });
+
+  //     const { accessToken } = backendResponse.data;
+  //     await tokenStorage.saveToken(accessToken);
+
+  //     Toast.show({
+  //       type: "success",
+  //       text1: "Đăng nhập thành công",
+  //       text2: `Chào mừng ${firebaseUser.displayName || firebaseUser.email}!`,
+  //     });
+
+  //     router.push("/customerHome/customerHome");
+  //   } catch (error: any) {
+  //     console.error("Google Login Error:", error);
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Đăng nhập Google thất bại",
+  //       text2:
+  //         error.response?.data?.message || error.message || "Vui lòng thử lại",
+  //     });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+  // const handleGoogleLogin = async () => {
+  //   try {
+  //     await promptAsync();
+  //   } catch (error: any) {
+  //     console.error("Google Login Error:", error);
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Lỗi",
+  //       text2: "Không thể mở Google Sign-In",
+  //     });
+  //   }
+  // };
 
   return (
     <ImageBackground
@@ -88,7 +141,6 @@ const Login = () => {
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          {/* Back Button */}
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.push("/")}
@@ -97,28 +149,26 @@ const Login = () => {
             <Text style={styles.backButtonText}>Trang chủ</Text>
           </TouchableOpacity>
 
-          {/* Logo */}
           <View style={styles.logoContainer}>
             <View style={styles.logo}>
               <Ionicons name="car-outline" size={32} color="#4CAF50" />
             </View>
           </View>
 
-          {/* Login Card */}
           <View style={styles.loginCard}>
-            <Text style={styles.title}>Sign in with email</Text>
+            <Text style={styles.title}>Đăng nhập bằng email</Text>
             <Text style={styles.subtitle}>
-              Delivering professional EV care with the trust and reliability you
-              deserve.
+              Cung cấp dịch vụ chăm sóc xe điện chuyên nghiệp với sự tin cậy và
+              độ tin cậy mà bạn xứng đáng.
             </Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Username</Text>
+              <Text style={styles.inputLabel}>Tên đăng nhập</Text>
               <TextInput
                 style={styles.input}
                 value={username}
                 onChangeText={setUsername}
-                placeholder="Username"
+                placeholder="Tên đăng nhập"
                 autoCapitalize="none"
                 autoComplete="username"
               />
@@ -164,13 +214,13 @@ const Login = () => {
               )}
             </TouchableOpacity>
 
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={styles.googleButton}
               onPress={handleGoogleLogin}
-              disabled={loading}
+              disabled={!request || loading}
             >
               <Text style={styles.googleButtonText}>Đăng nhập với Google</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             <View style={styles.registerContainer}>
               <Text style={styles.registerText}>Chưa có tài khoản? </Text>

@@ -59,6 +59,35 @@ export const createVehicle = createAsyncThunk(
   }
 );
 
+export const updateVehicle = createAsyncThunk(
+  "vehicle/updateVehicle",
+  async (
+    {
+      id,
+      updateData,
+    }: {
+      id: string;
+      updateData: {
+        color: string;
+        current_miliage: number;
+        battery_health: number;
+        last_service_mileage: number;
+        purchase_date: string;
+      };
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.put(`/vehicle/update/${id}`, updateData);
+      return response.data.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update vehicle"
+      );
+    }
+  }
+);
+
 const vehicleSlice = createSlice({
   name: "vehicle",
   initialState,

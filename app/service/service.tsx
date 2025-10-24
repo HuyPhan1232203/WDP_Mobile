@@ -1,6 +1,14 @@
+import {
+  createAppointment,
+  getMyAppointments,
+} from "@/redux/feature/appointmentSlice";
+import { Center, fetchCenters } from "@/redux/feature/centerSlice";
+import { fetchServices } from "@/redux/feature/serviceSlice";
+import { fetchUserVehicles } from "@/redux/feature/vehicleSlice";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -10,47 +18,127 @@ import {
   View,
 } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
+import DateTimePickerModal from "react-native-modal-datetime-picker";
 import Toast from "react-native-toast-message";
 
 const Service = () => {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const {
+    services,
+    loading: servicesLoading,
+    error: servicesError,
+  } = useAppSelector((state) => state.service);
+  const {
+    vehicles,
+    loading: vehiclesLoading,
+    error: vehiclesError,
+  } = useAppSelector((state) => state.vehicle);
+  const {
+    centers,
+    loading: centersLoading,
+    error: centersError,
+  } = useAppSelector((state) => state.center);
+  const { user } = useAppSelector((state) => state.user);
+  const { loading: appointmentLoading } = useAppSelector(
+    (state) => state.appointment
+  );
+
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [selectedService, setSelectedService] = useState(null);
   const [selectedCenter, setSelectedCenter] = useState(null);
-  const [appointmentDate, setAppointmentDate] = useState("");
-  const [appointmentTime, setAppointmentTime] = useState("");
+  const [appointmentDate, setAppointmentDate] = useState(new Date());
+  const [appointmentTime, setAppointmentTime] = useState(new Date());
   const [note, setNote] = useState("");
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
+  const [isTimePickerVisible, setTimePickerVisibility] = useState(false);
 
-  // Dummy data formatted for dropdown
-  const vehicles = [
-    { label: "Toyota Camry 2020", value: "Toyota Camry 2020" },
-    { label: "Honda Civic 2019", value: "Honda Civic 2019" },
-    { label: "Tesla Model 3", value: "Tesla Model 3" },
-    { label: "BMW X5 2021", value: "BMW X5 2021" },
-    { label: "Mercedes C-Class 2018", value: "Mercedes C-Class 2018" },
-  ];
-  const services = [
-    { label: "Bảo dưỡng định kỳ", value: "Bảo dưỡng định kỳ" },
-    { label: "Sửa chữa động cơ", value: "Sửa chữa động cơ" },
-    { label: "Thay dầu", value: "Thay dầu" },
-    { label: "Thay lốp", value: "Thay lốp" },
-    { label: "Kiểm tra phanh", value: "Kiểm tra phanh" },
-  ];
-  const centers = [
-    { label: "Trung tâm Hà Nội", value: "Trung tâm Hà Nội" },
-    { label: "Trung tâm TP.HCM", value: "Trung tâm TP.HCM" },
-    { label: "Trung tâm Đà Nẵng", value: "Trung tâm Đà Nẵng" },
-    { label: "Trung tâm Cần Thơ", value: "Trung tâm Cần Thơ" },
-    { label: "Trung tâm Hải Phòng", value: "Trung tâm Hải Phòng" },
-  ];
+  const vehicleItems = vehicles.map((vehicle) => ({
+    label: `${vehicle.license_plate} - ${
+      vehicle.model_id
+        ? vehicle.model_id.brand + " " + vehicle.model_id.model_name
+        : "Unknown Model"
+    }`,
+    value: vehicle._id,
+  }));
 
-  const handleBooking = () => {
+  useEffect(() => {
+    dispatch(fetchUserVehicles());
+    dispatch(fetchServices());
+    dispatch(fetchCenters());
+    // dispatch(fetchUserProfile());
+  }, []);
+
+  const serviceItems = services?.map((service) => ({
+    label: service.service_name,
+    value: service._id,
+  }));
+
+  const centerItems = centers.map((center: Center) => ({
+    label: center.center_name,
+    value: center._id,
+  }));
+
+  const showDatePicker = () => {
+    setDatePickerVisibility(true);
+  };
+
+  const hideDatePicker = () => {
+    setDatePickerVisibility(false);
+  };
+
+  const handleDateConfirm = (date: Date) => {
+    setAppointmentDate(date);
+    hideDatePicker();
+  };
+
+  const showTimePicker = () => {
+    setTimePickerVisibility(true);
+  };
+
+  const hideTimePicker = () => {
+    setTimePickerVisibility(false);
+  };
+
+  const handleTimeConfirm = (time: Date) => {
+    setAppointmentTime(time);
+    hideTimePicker();
+  };
+
+  const formatDate = (date: Date) => {
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatTime = (time: Date) => {
+    const hours = time.getHours().toString().padStart(2, "0");
+    const minutes = time.getMinutes().toString().padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
+
+  const convertDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const convertTime = (time: Date) => {
+    const hours = time.getHours().toString().padStart(2, "0");
+    const minutes = time.getMinutes().toString().padStart(2, "0");
+    return `${hours}:${minutes}`;
+  };
+  console.log(user);
+  const handleBooking = async () => {
     if (
       !selectedVehicle ||
       !selectedService ||
       !selectedCenter ||
       !appointmentDate ||
-      !appointmentTime
+      !appointmentTime ||
+      !user
     ) {
       Toast.show({
         type: "error",
@@ -59,18 +147,33 @@ const Service = () => {
       });
       return;
     }
+    const appointmentData = {
+      appoinment_date: convertDate(appointmentDate),
+      appoinment_time: convertTime(appointmentTime),
+      notes: note,
+      user_id: user._id,
+      vehicle_id: selectedVehicle,
+      center_id: selectedCenter,
+      service_type_id: selectedService,
+      technician_id: "", // Optional, set to empty or omit
+    };
 
-    // Here you would typically send the booking data to your API
-    Toast.show({
-      type: "success",
-      text1: "Đặt lịch thành công!",
-      text2: "Chúng tôi sẽ liên hệ với bạn sớm.",
-    });
-
-    // Reset form or navigate
-    setTimeout(() => {
-      router.push("/");
-    }, 2000);
+    try {
+      const res = await dispatch(createAppointment(appointmentData)).unwrap();
+      Toast.show({
+        type: "success",
+        text1: "Đặt lịch thành công!",
+        text2: "Chúng tôi sẽ liên hệ với bạn sớm.",
+      });
+      router.back();
+      dispatch(getMyAppointments({ page: 1, limit: 10 }));
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể đặt lịch",
+      });
+    }
   };
 
   const renderDropdown = (
@@ -116,7 +219,9 @@ const Service = () => {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => {
+            router.back();
+          }}
           style={styles.backButton}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
@@ -135,23 +240,23 @@ const Service = () => {
           {renderDropdown(
             "Chọn xe",
             selectedVehicle,
-            vehicles,
+            vehicleItems,
             (item) => setSelectedVehicle(item.value),
-            "Chọn xe của bạn"
+            vehiclesLoading ? "Đang tải..." : "Chọn xe của bạn"
           )}
           {renderDropdown(
             "Loại dịch vụ",
             selectedService,
-            services,
+            serviceItems,
             (item) => setSelectedService(item.value),
-            "Chọn loại dịch vụ"
+            servicesLoading ? "Đang tải..." : "Chọn loại dịch vụ"
           )}
           {renderDropdown(
             "Trung tâm bảo dưỡng",
             selectedCenter,
-            centers,
+            centerItems,
             (item) => setSelectedCenter(item.value),
-            "Chọn trung tâm"
+            centersLoading ? "Đang tải..." : "Chọn trung tâm"
           )}
         </View>
 
@@ -160,24 +265,20 @@ const Service = () => {
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Ngày hẹn</Text>
-            <TextInput
-              style={styles.input}
-              value={appointmentDate}
-              onChangeText={setAppointmentDate}
-              placeholder="DD/MM/YYYY"
-              keyboardType="numeric"
-            />
+            <TouchableOpacity style={styles.input} onPress={showDatePicker}>
+              <Text style={styles.selectedTextStyle}>
+                {formatDate(appointmentDate)}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Giờ hẹn</Text>
-            <TextInput
-              style={styles.input}
-              value={appointmentTime}
-              onChangeText={setAppointmentTime}
-              placeholder="HH:MM"
-              keyboardType="numeric"
-            />
+            <TouchableOpacity style={styles.input} onPress={showTimePicker}>
+              <Text style={styles.selectedTextStyle}>
+                {formatTime(appointmentTime)}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.inputGroup}>
@@ -193,10 +294,31 @@ const Service = () => {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.bookButton} onPress={handleBooking}>
-          <Text style={styles.bookButtonText}>Đặt lịch</Text>
+        <TouchableOpacity
+          style={styles.bookButton}
+          onPress={handleBooking}
+          disabled={appointmentLoading}
+        >
+          <Text style={styles.bookButtonText}>
+            {appointmentLoading ? "Đang đặt..." : "Đặt lịch"}
+          </Text>
         </TouchableOpacity>
       </View>
+
+      <DateTimePickerModal
+        isVisible={isDatePickerVisible}
+        mode="date"
+        onConfirm={handleDateConfirm}
+        onCancel={hideDatePicker}
+        minimumDate={new Date()}
+      />
+
+      <DateTimePickerModal
+        isVisible={isTimePickerVisible}
+        mode="time"
+        onConfirm={handleTimeConfirm}
+        onCancel={hideTimePicker}
+      />
     </ScrollView>
   );
 };
@@ -270,6 +392,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 15,
     color: "#333",
+    justifyContent: "center",
   },
   textArea: {
     height: 80,

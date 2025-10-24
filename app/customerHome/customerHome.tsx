@@ -1,3 +1,5 @@
+// app/(tabs)/index.tsx hoặc CustomerHome.tsx
+import { getMyAppointments } from "@/redux/feature/appointmentSlice";
 import {
   createVehicle,
   fetchAllModels,
@@ -5,255 +7,52 @@ import {
 } from "@/redux/feature/vehicleSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { Vehicle } from "@/redux/types/vehicle";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import { Dropdown } from "react-native-element-dropdown";
+import { ScrollView, StyleSheet, View } from "react-native";
 import Toast from "react-native-toast-message";
-
-// Move AddVehicleModal outside CustomerHome component
-const AddVehicleModal = ({
-  visible,
-  onClose,
-  models,
-  loading,
-  error,
-  onSubmit,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  models: any[];
-  loading: boolean;
-  error: string | null;
-  onSubmit: (data: any) => void;
-}) => {
-  const [selectedModelId, setSelectedModelId] = useState(null);
-  const [manufacturingYear, setManufacturingYear] = useState("");
-  const [vin, setVin] = useState("");
-  const [vehicleColor, setVehicleColor] = useState(null);
-  const [currentMileage, setCurrentMileage] = useState("");
-
-  const colors = [
-    { label: "Trắng", value: "white" },
-    { label: "Đen", value: "black" },
-    { label: "Xám", value: "gray" },
-    { label: "Đỏ", value: "red" },
-    { label: "Xanh", value: "blue" },
-  ];
-
-  const modelItems = models.map((model) => ({
-    label: `${model.brand} ${model.model_name} (${model.year})`,
-    value: model._id,
-  }));
-
-  const handleSubmit = () => {
-    if (!selectedModelId || !manufacturingYear || !vin || !vehicleColor) {
-      Toast.show({
-        type: "error",
-        text1: "Lỗi",
-        text2: "Vui lòng điền đầy đủ thông tin bắt buộc",
-      });
-      return;
-    }
-
-    onSubmit({
-      license_plate: vin,
-      color: vehicleColor,
-      purchase_date: new Date().toISOString().split("T")[0],
-      current_mileage: parseInt(currentMileage) || 0,
-      battery_health: 100,
-      last_service_mileage: 0,
-      model_id: selectedModelId,
-    });
-
-    // Reset form
-    setSelectedModelId(null);
-    setManufacturingYear("");
-    setVin("");
-    setVehicleColor(null);
-    setCurrentMileage("");
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={false}
-      presentationStyle="fullScreen"
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Thông tin xe điện</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color="#333" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.modalContent}>
-          <Text style={styles.modalSubtitle}>
-            Nhập thông tin chi tiết về xe điện của bạn
-          </Text>
-
-          <View style={styles.inputRow}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.inputLabel}>
-                Model xe <Text style={styles.required}>*</Text>
-              </Text>
-              <Dropdown
-                style={styles.dropdown}
-                placeholderStyle={styles.placeholderStyle}
-                selectedTextStyle={styles.selectedTextStyle}
-                data={modelItems}
-                labelField="label"
-                valueField="value"
-                placeholder={loading ? "Đang tải..." : "Chọn model xe"}
-                value={selectedModelId}
-                onChange={(item) => {
-                  setSelectedModelId(item.value);
-                }}
-                renderRightIcon={() => (
-                  <Ionicons name="chevron-down" size={20} color="#999" />
-                )}
-                disable={loading}
-                search
-                searchPlaceholder="Tìm kiếm model xe..."
-                maxHeight={300}
-              />
-            </View>
-
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 10 }]}>
-              <Text style={styles.inputLabel}>
-                Năm sản xuất <Text style={styles.required}>*</Text>
-              </Text>
-              <TextInput
-                style={styles.input}
-                value={manufacturingYear}
-                onChangeText={setManufacturingYear}
-                placeholder="2025"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              Biển số xe <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={styles.input}
-              value={vin}
-              onChangeText={setVin}
-              placeholder="VD: 79A1-56789"
-            />
-            <Text style={styles.inputHint}>
-              Biển số xe là mã định danh duy nhất
-            </Text>
-          </View>
-
-          <View style={styles.inputRow}>
-            <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-              <Text style={styles.inputLabel}>
-                Màu xe <Text style={styles.required}>*</Text>
-              </Text>
-              <Dropdown
-                style={styles.dropdown}
-                placeholderStyle={styles.placeholderStyle}
-                selectedTextStyle={styles.selectedTextStyle}
-                data={colors}
-                labelField="label"
-                valueField="value"
-                placeholder="Chọn màu xe"
-                value={vehicleColor}
-                onChange={(item) => {
-                  setVehicleColor(item.value);
-                }}
-                renderRightIcon={() => (
-                  <Ionicons name="chevron-down" size={20} color="#999" />
-                )}
-                maxHeight={300}
-              />
-            </View>
-
-            <View style={[styles.inputGroup, { flex: 1, marginLeft: 10 }]}>
-              <Text style={styles.inputLabel}>Số km hiện tại</Text>
-              <TextInput
-                style={styles.input}
-                value={currentMileage}
-                onChangeText={setCurrentMileage}
-                placeholder="0"
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-
-          {error && (
-            <Text style={{ color: "red", marginBottom: 10 }}>{error}</Text>
-          )}
-
-          <View style={styles.noteSection}>
-            <Text style={styles.noteTitle}>Lưu ý:</Text>
-            <Text style={styles.noteText}>
-              • Biển số xe không thể thay đổi sau khi lưu
-            </Text>
-            <Text style={styles.noteText}>
-              • Số km hiện tại sẽ được sử dụng để tính toán lịch bảo dưỡng
-            </Text>
-            <Text style={styles.noteText}>
-              • Thông tin này sẽ giúp chúng tôi đưa ra khuyến nghị bảo dưỡng phù
-              hợp
-            </Text>
-          </View>
-        </ScrollView>
-
-        <View style={styles.modalFooter}>
-          <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelButtonText}>Hủy</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.addButton} onPress={handleSubmit}>
-            <Text style={styles.addButtonText}>Thêm xe</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-};
+import { ActionButtons } from "./components/ActionButton";
+import { AppointmentsSection } from "./components/appointment/AppointmentSection";
+import { Header } from "./components/Header";
+import { AddVehicleModal } from "./components/vehicle.tsx/AddVehicleModal";
+import { VehiclesSection } from "./components/vehicle.tsx/VehicleSection";
 
 const CustomerHome = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
+
   const { models, vehicles, loading, error } = useAppSelector(
     (state) => state.vehicle
   );
+
+  const {
+    myAppointments,
+    pagination,
+    loading: appointmentLoading,
+  } = useAppSelector((state) => state.appointment);
+
   const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
 
-  // Fetch models when modal opens
+  // Effects
   useEffect(() => {
     if (showAddVehicleModal && models.length === 0) {
       dispatch(fetchAllModels());
     }
   }, [showAddVehicleModal, dispatch]);
 
-  // Fetch user vehicles on component mount
   useEffect(() => {
     dispatch(fetchUserVehicles());
   }, [dispatch]);
 
+  useEffect(() => {
+    dispatch(getMyAppointments({ page: 1, limit: 5 }));
+  }, [dispatch]);
+
+  // Handlers
   const handleAddVehicle = async (vehicleData: any) => {
     try {
       await dispatch(createVehicle(vehicleData)).unwrap();
-
-      // Fetch lại danh sách xe sau khi thêm thành công
       dispatch(fetchUserVehicles());
-
       setShowAddVehicleModal(false);
 
       Toast.show({
@@ -270,170 +69,45 @@ const CustomerHome = () => {
     }
   };
 
-  const getColorLabel = (color: string) => {
-    const colorMap: { [key: string]: string } = {
-      white: "Trắng",
-      black: "Đen",
-      gray: "Xám",
-      red: "Đỏ",
-      blue: "Xanh",
-    };
-    return colorMap[color] || color;
+  const handleVehiclePress = (vehicle: Vehicle, modelName: string) => {
+    router.push({
+      pathname: "/vehicle/vehicle",
+      params: { vehicle: JSON.stringify(vehicle), modelName },
+    });
+  };
+
+  const handleAppointmentPress = (appointmentId: string) => {
+    router.push({
+      pathname: "/appointment/appointment",
+      params: { appointmentId },
+    });
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Trang chủ</Text>
-        <TouchableOpacity style={styles.settingsButton}>
-          <Ionicons name="settings-outline" size={24} color="#333" />
-        </TouchableOpacity>
-      </View>
+      <Header title="Trang chủ" />
 
       <ScrollView style={styles.content}>
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => setShowAddVehicleModal(true)}
-          >
-            <Ionicons name="add" size={24} color="white" />
-            <Text style={styles.primaryButtonText}>Thêm xe mới</Text>
-          </TouchableOpacity>
+        <ActionButtons
+          onAddVehicle={() => setShowAddVehicleModal(true)}
+          onBookService={() => router.push("/service/service")}
+          onReportIssue={() => {}}
+          onSettings={() => {}}
+        />
 
-          <View style={styles.secondaryButtons}>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => router.push("/service/service")}
-            >
-              <Ionicons name="calendar-outline" size={20} color="#666" />
-              <Text style={styles.secondaryButtonText}>Đặt lịch bảo dưỡng</Text>
-            </TouchableOpacity>
+        <VehiclesSection
+          vehicles={vehicles}
+          models={models}
+          onVehiclePress={handleVehiclePress}
+          onAddVehicle={() => setShowAddVehicleModal(true)}
+        />
 
-            <TouchableOpacity style={styles.secondaryButton}>
-              <Ionicons name="notifications-outline" size={20} color="#666" />
-              <Text style={styles.secondaryButtonText}>Nhắc nhở</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.secondaryButton}>
-              <Ionicons name="settings-outline" size={20} color="#666" />
-              <Text style={styles.secondaryButtonText}>Cài đặt</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Vehicle Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="car-outline" size={20} color="#333" />
-            <Text style={styles.sectionTitle}>
-              Xe của bạn ({vehicles.length})
-            </Text>
-          </View>
-          <Text style={styles.sectionSubtitle}>
-            Quản lý thông tin và lịch bảo dưỡng xe
-          </Text>
-
-          {vehicles.length > 0 ? (
-            <View style={styles.vehicleList}>
-              {vehicles.map((vehicle: Vehicle) => (
-                <TouchableOpacity
-                  key={vehicle._id}
-                  style={styles.vehicleCard}
-                  onPress={() => {
-                    // Navigate to vehicle detail if needed
-                    console.log("Vehicle pressed:", vehicle._id);
-                  }}
-                >
-                  <View style={styles.vehicleHeader}>
-                    <Text style={styles.vehicleLicense}>
-                      {vehicle.license_plate}
-                    </Text>
-                    <Ionicons name="chevron-forward" size={20} color="#666" />
-                  </View>
-                  <Text style={styles.vehicleModel}>
-                    {vehicle.model_id.brand} {vehicle.model_id.model_name} (
-                    {vehicle.model_id.year})
-                  </Text>
-                  <View style={styles.vehicleDetails}>
-                    <View style={styles.detailItem}>
-                      <Ionicons
-                        name="color-palette-outline"
-                        size={16}
-                        color="#666"
-                      />
-                      <Text style={styles.detailText}>
-                        {getColorLabel(vehicle.color)}
-                      </Text>
-                    </View>
-                    <View style={styles.detailItem}>
-                      <Ionicons
-                        name="speedometer-outline"
-                        size={16}
-                        color="#666"
-                      />
-                      <Text style={styles.detailText}>
-                        {vehicle.current_mileage} km
-                      </Text>
-                    </View>
-                    <View style={styles.detailItem}>
-                      <Ionicons
-                        name="battery-half-outline"
-                        size={16}
-                        color="#666"
-                      />
-                      <Text style={styles.detailText}>
-                        {vehicle.battery_health}%
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="car-outline" size={48} color="#ccc" />
-              <Text style={styles.emptyStateText}>
-                Chưa có xe nào được đăng ký
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyStateButton}
-                onPress={() => setShowAddVehicleModal(true)}
-              >
-                <Ionicons name="add" size={16} color="#4CAF50" />
-                <Text style={styles.emptyStateButtonText}>
-                  Thêm xe đầu tiên
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Maintenance Schedule Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="calendar-outline" size={20} color="#333" />
-            <Text style={styles.sectionTitle}>Lịch bảo dưỡng gần đây</Text>
-          </View>
-          <Text style={styles.sectionSubtitle}>
-            Theo dõi trạng thái các lịch hẹn
-          </Text>
-
-          <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={48} color="#ccc" />
-            <Text style={styles.emptyStateText}>
-              Chưa có lịch bảo dưỡng nào
-            </Text>
-            <TouchableOpacity
-              style={styles.emptyStateButton}
-              onPress={() => router.push("/service/service")}
-            >
-              <Ionicons name="add" size={16} color="#4CAF50" />
-              <Text style={styles.emptyStateButtonText}>Đặt lịch đầu tiên</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <AppointmentsSection
+          appointments={myAppointments}
+          loading={appointmentLoading}
+          onAppointmentPress={handleAppointmentPress}
+          onAddAppointment={() => router.push("/service/service")}
+        />
       </ScrollView>
 
       <AddVehicleModal
@@ -455,294 +129,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f5f5f5",
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: "white",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  settingsButton: {
-    padding: 5,
-  },
   content: {
     flex: 1,
     padding: 20,
-  },
-  actionButtons: {
-    marginBottom: 20,
-  },
-  primaryButton: {
-    backgroundColor: "#4CAF50",
-    borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 15,
-  },
-  primaryButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
-  secondaryButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: "white",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    alignItems: "center",
-    marginHorizontal: 5,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  secondaryButtonText: {
-    color: "#666",
-    fontSize: 12,
-    textAlign: "center",
-    marginTop: 4,
-  },
-  section: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginLeft: 8,
-  },
-  sectionSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 20,
-  },
-  emptyState: {
-    alignItems: "center",
-    paddingVertical: 30,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: "#999",
-    textAlign: "center",
-    marginVertical: 15,
-  },
-  emptyStateButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f0f9f0",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  emptyStateButtonText: {
-    color: "#4CAF50",
-    fontSize: 14,
-    fontWeight: "500",
-    marginLeft: 5,
-  },
-  vehicleList: {
-    // Container for vehicle cards
-  },
-  vehicleCard: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-  },
-  vehicleHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 5,
-  },
-  vehicleLicense: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  vehicleModel: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 10,
-  },
-  vehicleDetails: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  detailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  detailText: {
-    fontSize: 12,
-    color: "#666",
-    marginLeft: 5,
-  },
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "white",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  closeButton: {
-    padding: 5,
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  inputRow: {
-    flexDirection: "row",
-  },
-  inputGroup: {
-    marginBottom: 15,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#333",
-    marginBottom: 8,
-  },
-  required: {
-    color: "#f44336",
-  },
-  input: {
-    backgroundColor: "#f0f7ff",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#333",
-  },
-  inputHint: {
-    fontSize: 12,
-    color: "#999",
-    marginTop: 5,
-  },
-  dropdown: {
-    backgroundColor: "#f0f7ff",
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    height: 48,
-  },
-  placeholderStyle: {
-    fontSize: 15,
-    color: "#999",
-  },
-  selectedTextStyle: {
-    fontSize: 15,
-    color: "#333",
-  },
-  noteSection: {
-    backgroundColor: "#f8f9fa",
-    borderRadius: 8,
-    padding: 15,
-    marginTop: 10,
-  },
-  noteTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 8,
-  },
-  noteText: {
-    fontSize: 12,
-    color: "#666",
-    lineHeight: 18,
-    marginBottom: 4,
-  },
-  modalFooter: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-  },
-  cancelButton: {
-    flex: 1,
-    backgroundColor: "#f5f5f5",
-    borderRadius: 8,
-    paddingVertical: 12,
-    marginRight: 10,
-    alignItems: "center",
-  },
-  cancelButtonText: {
-    color: "#666",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  addButton: {
-    flex: 1,
-    backgroundColor: "#4CAF50",
-    borderRadius: 8,
-    paddingVertical: 12,
-    marginLeft: 10,
-    alignItems: "center",
-  },
-  addButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
   },
 });
