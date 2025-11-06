@@ -34,13 +34,16 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.secondaryButton}
-          onPress={() => router.push("/issue-report/list")} // Thêm navigation
+          onPress={() => router.push("/appointment/appointmentList")} // Thêm navigation
         >
-          <Ionicons name="notifications-outline" size={20} color="#666" />
-          <Text style={styles.secondaryButtonText}>Báo cáo vấn đề</Text>
+          <Ionicons name="calendar-outline" size={20} color="#333" />
+          <Text style={styles.secondaryButtonText}>Lịch bảo dưỡng của tôi</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={onSettings}>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => router.push("/setting/setting")}
+        >
           <Ionicons name="settings-outline" size={20} color="#666" />
           <Text style={styles.secondaryButtonText}>Cài đặt</Text>
         </TouchableOpacity>

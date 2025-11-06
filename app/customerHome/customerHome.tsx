@@ -45,7 +45,7 @@ const CustomerHome = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    dispatch(getMyAppointments({ page: 1, limit: 5 }));
+    dispatch(getMyAppointments({ page: 1, limit: 3 }));
   }, [dispatch]);
 
   // Handlers

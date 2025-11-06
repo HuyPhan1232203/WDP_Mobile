@@ -50,7 +50,7 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
         </View>
       ) : appointments && appointments.length > 0 ? (
         <View style={styles.appointmentList}>
-          {appointments.slice(0, 3).map((appointment: Appointment) => (
+          {appointments.map((appointment: Appointment) => (
             <AppointmentCard
               key={appointment._id}
               appointment={appointment}
