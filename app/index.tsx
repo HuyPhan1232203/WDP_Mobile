@@ -135,7 +135,7 @@ export default function HomeScreen() {
 
                 <TouchableOpacity
                   style={styles.ctaButton}
-                  onPress={() => router.push("/service/service")}
+                  onPress={() => router.push("/login/login")}
                 >
                   <Ionicons name="arrow-forward" size={20} color="white" />
                   <Text style={styles.ctaButtonText}>Đặt lịch bảo dưỡng</Text>

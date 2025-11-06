@@ -64,6 +64,7 @@ export const fetchAllParts = createAsyncThunk<Part[]>(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get<Part[]>("/parts");
+      console.log(response);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -170,7 +171,7 @@ const partSlice = createSlice({
       })
       .addCase(fetchAllParts.fulfilled, (state, action) => {
         state.loading = false;
-        state.parts = action.payload.data;
+        state.parts = action.payload.data.items;
       })
       .addCase(fetchAllParts.rejected, (state, action) => {
         state.loading = false;

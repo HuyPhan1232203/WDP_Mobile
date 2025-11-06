@@ -16,6 +16,7 @@ interface AppointmentsSectionProps {
   loading: boolean;
   onAppointmentPress: (appointmentId: string) => void;
   onAddAppointment: () => void;
+  onViewAll: () => void;
 }
 
 export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
@@ -23,12 +24,21 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
   loading,
   onAppointmentPress,
   onAddAppointment,
+  onViewAll,
 }) => {
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="calendar-outline" size={20} color="#333" />
-        <Text style={styles.sectionTitle}>Lịch bảo dưỡng gần đây</Text>
+        <View style={styles.sectionTitleContainer}>
+          <Ionicons name="calendar-outline" size={20} color="#333" />
+          <Text style={styles.sectionTitle}>Lịch bảo dưỡng gần đây</Text>
+        </View>
+        {appointments && appointments.length > 0 && (
+          <TouchableOpacity onPress={onViewAll} style={styles.viewAllButton}>
+            <Text style={styles.viewAllText}>Xem thêm</Text>
+            <Ionicons name="chevron-forward" size={16} color="#4CAF50" />
+          </TouchableOpacity>
+        )}
       </View>
       <Text style={styles.sectionSubtitle}>
         Theo dõi trạng thái các lịch hẹn
@@ -40,7 +50,7 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
         </View>
       ) : appointments && appointments.length > 0 ? (
         <View style={styles.appointmentList}>
-          {appointments.map((appointment: Appointment) => (
+          {appointments.slice(0, 3).map((appointment: Appointment) => (
             <AppointmentCard
               key={appointment._id}
               appointment={appointment}
@@ -80,13 +90,28 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 5,
+  },
+  sectionTitleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
     marginLeft: 8,
+  },
+  viewAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  viewAllText: {
+    fontSize: 14,
+    color: "#4CAF50",
+    fontWeight: "500",
+    marginRight: 4,
   },
   sectionSubtitle: {
     fontSize: 14,

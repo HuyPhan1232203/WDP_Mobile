@@ -107,6 +107,7 @@ const CustomerHome = () => {
           loading={appointmentLoading}
           onAppointmentPress={handleAppointmentPress}
           onAddAppointment={() => router.push("/service/service")}
+          onViewAll={() => router.push("/appointment/appointmentList")} // Add this
         />
       </ScrollView>
 

@@ -23,7 +23,7 @@ import {
 } from "react-native";
 import QRCode from "react-native-qrcode-svg"; // Import QRCode
 import Toast from "react-native-toast-message";
-
+import { WebView } from "react-native-webview";
 const AppointmentDetail = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -33,7 +33,10 @@ const AppointmentDetail = () => {
   const { currentAppointment, loading, error } = useAppSelector(
     (state) => state.appointment
   );
-
+  useEffect(() => {
+    console.log(currentAppointment);
+  }, [currentAppointment]);
+  const [showPaymentWebView, setShowPaymentWebView] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
@@ -69,27 +72,25 @@ const AppointmentDetail = () => {
       [key: string]: { label: string; color: string; icon: string };
     } = {
       pending: { label: "Chờ xác nhận", color: "#FF9800", icon: "time" },
-      confirmed: {
-        label: "Đã xác nhận",
-        color: "#4CAF50",
-        icon: "checkmark-circle",
+      assigned: { label: "Đã phân công", color: "#2196F3", icon: "person" },
+      check_in: { label: "Đã check-in", color: "#4CAF50", icon: "checkmark" },
+      in_progress: {
+        label: "Đang thực hiện",
+        color: "#FF9800",
+        icon: "construct",
       },
+      repaired: { label: "Đã sửa chữa", color: "#4CAF50", icon: "wrench" },
       completed: {
         label: "Hoàn thành",
-        color: "#2196F3",
+        color: "#4CAF50",
         icon: "checkmark-done-circle",
       },
-      cancelled: {
-        label: "Đã hủy",
-        color: "#F44336",
-        icon: "close-circle",
-      },
+      cancelled: { label: "Đã hủy", color: "#F44336", icon: "close-circle" },
     };
     return (
       statusMap[status] || { label: status, color: "#666", icon: "help-circle" }
     );
   };
-
   const handleCancel = async () => {
     try {
       await dispatch(cancelAppointment(appointmentId)).unwrap();
@@ -112,27 +113,40 @@ const AppointmentDetail = () => {
   };
 
   const handleOpenPayment = async () => {
-    if (!currentAppointment?.payment_id?.checkout_url) {
+    if (!currentAppointment?.payment_id?.checkoutUrl) {
       Alert.alert("Lỗi", "Không tìm thấy link thanh toán");
       return;
     }
 
-    try {
-      const url = currentAppointment.payment_id.checkout_url;
-      const supported = await Linking.canOpenURL(url);
-
-      if (!supported) {
-        Alert.alert("Lỗi", "Không thể mở link thanh toán");
-        return;
-      }
-
-      await Linking.openURL(url);
-    } catch (error) {
-      console.error("Error opening payment URL:", error);
-      Alert.alert("Lỗi", "Không thể mở trang thanh toán");
+    // Instead of Linking.openURL, show WebView modal
+    setShowPaymentWebView(true);
+  };
+  const handlePaymentNavigationStateChange = (navState: any) => {
+    // Check if the URL indicates success or failure
+    // Adjust the URLs based on your payment gateway's return URLs
+    if (navState.url.includes("success") || navState.url.includes("return")) {
+      // Payment successful
+      setShowPaymentWebView(false);
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Thanh toán thành công",
+      });
+      // Refresh appointment data
+      dispatch(getAppointmentById(appointmentId));
+    } else if (
+      navState.url.includes("cancel") ||
+      navState.url.includes("failure")
+    ) {
+      // Payment failed or cancelled
+      setShowPaymentWebView(false);
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Thanh toán thất bại",
+      });
     }
   };
-
   const handleCallCenter = async () => {
     if (!currentAppointment?.center_id?.phone) {
       Alert.alert("Lỗi", "Không tìm thấy số điện thoại");
@@ -234,7 +248,8 @@ const AppointmentDetail = () => {
   const statusInfo = getStatusInfo(currentAppointment.status);
   const canCancel =
     currentAppointment.status === "pending" ||
-    currentAppointment.status === "confirmed";
+    currentAppointment.status === "confirmed" ||
+    currentAppointment.status === "accepted";
 
   return (
     <View style={styles.container}>
@@ -338,7 +353,25 @@ const AppointmentDetail = () => {
             </View>
           )}
         </View>
-
+        {/* Customer Info */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="person-circle" size={20} color="#4CAF50" />
+            <Text style={styles.cardTitle}>Thông tin khách hàng</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Họ tên</Text>
+            <Text style={styles.infoValue}>
+              {currentAppointment.user_id.fullName}
+            </Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Email</Text>
+            <Text style={styles.infoValue}>
+              {currentAppointment.user_id.email}
+            </Text>
+          </View>
+        </View>
         {/* Center Info */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -378,8 +411,11 @@ const AppointmentDetail = () => {
               <Ionicons name="person" size={20} color="#4CAF50" />
               <Text style={styles.cardTitle}>Kỹ thuật viên</Text>
             </View>
-            <Text style={styles.infoValue}>
-              {typeof currentAppointment.technician_id === "string"
+            <Text style={styles.infoTechnicianValue}>
+              {typeof currentAppointment.technician_id === "object" &&
+              currentAppointment.technician_id.fullName
+                ? currentAppointment.technician_id.fullName
+                : typeof currentAppointment.technician_id === "string"
                 ? currentAppointment.technician_id
                 : "Chưa phân công"}
             </Text>
@@ -398,63 +434,64 @@ const AppointmentDetail = () => {
         )}
 
         {/* Payment Info */}
-        {currentAppointment.payment_id && (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="card" size={20} color="#4CAF50" />
-              <Text style={styles.cardTitle}>Thanh toán</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Mã đơn hàng</Text>
-              <Text style={styles.infoValue}>
-                {currentAppointment.payment_id.order_code}
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Số tiền đặt cọc</Text>
-              <Text style={styles.infoValue}>
-                {formatCurrency(currentAppointment.payment_id.amount)}
-              </Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Trạng thái</Text>
-              <Text
-                style={[
-                  styles.infoValue,
-                  {
-                    color:
-                      currentAppointment.payment_id.status === "pending"
-                        ? "#FF9800"
-                        : "#4CAF50",
-                  },
-                ]}
-              >
-                {currentAppointment.payment_id.status === "pending"
-                  ? "Chờ thanh toán"
-                  : "Đã thanh toán"}
-              </Text>
-            </View>
-
-            {currentAppointment.payment_id.status === "pending" && (
-              <View style={styles.paymentActions}>
-                <TouchableOpacity
-                  style={styles.qrButton}
-                  onPress={() => setShowQRModal(true)}
-                >
-                  <Ionicons name="qr-code" size={18} color="white" />
-                  <Text style={styles.qrButtonText}>Xem mã QR</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.payButton}
-                  onPress={handleOpenPayment}
-                >
-                  <Ionicons name="card" size={18} color="white" />
-                  <Text style={styles.payButtonText}>Thanh toán ngay</Text>
-                </TouchableOpacity>
+        {currentAppointment.payment_id &&
+          currentAppointment.status !== "accepted" && (
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="card" size={20} color="#4CAF50" />
+                <Text style={styles.cardTitle}>Thanh toán</Text>
               </View>
-            )}
-          </View>
-        )}
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Mã đơn hàng</Text>
+                <Text style={styles.infoValue}>
+                  {currentAppointment.payment_id.orderCode}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Số tiền đặt cọc</Text>
+                <Text style={styles.infoValue}>
+                  {formatCurrency(currentAppointment.payment_id.amount)}
+                </Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Trạng thái</Text>
+                <Text
+                  style={[
+                    styles.infoValue,
+                    {
+                      color:
+                        currentAppointment.payment_id.status === "PENDING"
+                          ? "#FF9800"
+                          : "#4CAF50",
+                    },
+                  ]}
+                >
+                  {currentAppointment.payment_id.status === "PENDING"
+                    ? "Chờ thanh toán"
+                    : "Đã thanh toán"}
+                </Text>
+              </View>
+
+              {currentAppointment.payment_id.status === "PENDING" && (
+                <View style={styles.paymentActions}>
+                  <TouchableOpacity
+                    style={styles.qrButton}
+                    onPress={() => setShowQRModal(true)}
+                  >
+                    <Ionicons name="qr-code" size={18} color="white" />
+                    <Text style={styles.qrButtonText}>Xem mã QR</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.payButton}
+                    onPress={handleOpenPayment}
+                  >
+                    <Ionicons name="card" size={18} color="white" />
+                    <Text style={styles.payButtonText}>Thanh toán ngay</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
 
         {/* Cancel Button */}
         {canCancel && (
@@ -489,10 +526,10 @@ const AppointmentDetail = () => {
             <Text style={styles.qrModalTitle}>Quét mã để thanh toán</Text>
 
             {/* Sử dụng QRCode component thay vì Image */}
-            {currentAppointment.payment_id?.qr_code && (
+            {currentAppointment.payment_id?.qrCode && (
               <View style={styles.qrCodeContainer}>
                 <QRCode
-                  value={currentAppointment.payment_id.qr_code}
+                  value={currentAppointment.payment_id.qrCode}
                   size={250}
                   backgroundColor="white"
                   color="black"
@@ -517,6 +554,29 @@ const AppointmentDetail = () => {
               </Text>
             </TouchableOpacity>
           </View>
+        </View>
+      </Modal>
+      <Modal
+        visible={showPaymentWebView}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => setShowPaymentWebView(false)}
+      >
+        <View style={styles.webViewContainer}>
+          <View style={styles.webViewHeader}>
+            <TouchableOpacity
+              style={styles.closeWebViewButton}
+              onPress={() => setShowPaymentWebView(false)}
+            >
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+            <Text style={styles.webViewTitle}>Thanh toán</Text>
+          </View>
+          <WebView
+            source={{ uri: currentAppointment?.payment_id?.checkoutUrl || "" }}
+            onNavigationStateChange={handlePaymentNavigationStateChange}
+            style={styles.webView}
+          />
         </View>
       </Modal>
 
@@ -593,6 +653,34 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
+  },
+  webViewContainer: {
+    flex: 1,
+    backgroundColor: "white",
+  },
+  webViewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    backgroundColor: "white",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  closeWebViewButton: {
+    padding: 5,
+  },
+  webViewTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    marginLeft: 10,
+  },
+  webView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -691,6 +779,13 @@ const styles = StyleSheet.create({
     textAlign: "right",
     flex: 1,
     marginLeft: 10,
+  },
+  infoTechnicianValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+    textAlign: "center",
+    flex: 1,
   },
   serviceName: {
     fontSize: 16,

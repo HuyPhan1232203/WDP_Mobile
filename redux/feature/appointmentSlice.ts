@@ -17,6 +17,9 @@ interface GetMyAppointmentsRequest {
   page: number;
   limit: number;
   status?: string;
+  date_from?: string;
+  date_to?: string;
+  is_working_now?: boolean;
 }
 
 // Nested object interfaces
@@ -30,6 +33,7 @@ interface User {
 interface Vehicle {
   _id: string;
   license_plate: string;
+  color: string;
 }
 
 interface Center {
@@ -48,11 +52,11 @@ interface ServiceType {
 
 interface Payment {
   _id: string;
-  order_code: number;
+  orderCode: number;
   amount: number;
   status: string;
-  checkout_url: string;
-  qr_code: string;
+  checkoutUrl: string;
+  qrCode: string;
 }
 
 // Main Appointment interface with nested objects
@@ -67,7 +71,12 @@ interface Appointment {
   vehicle_id: Vehicle;
   center_id: Center;
   service_type_id: ServiceType;
-  technician_id: string | null;
+  technician_id: {
+    _id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  };
   payment_id?: Payment;
   createdAt: string;
   updatedAt: string;
@@ -109,7 +118,9 @@ export const createAppointment = createAsyncThunk(
   "appointment/createAppointment",
   async (appointmentData: CreateAppointmentRequest, { rejectWithValue }) => {
     try {
+      console.log("object");
       const response = await api.post("/appointment/create", appointmentData);
+      console.log(response);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -145,6 +156,7 @@ export const getMyAppointments = createAsyncThunk<
     }
   }
 );
+
 export const cancelAppointment = createAsyncThunk<Appointment, string>(
   "appointment/cancelAppointment",
   async (appointmentId: string, { rejectWithValue }) => {

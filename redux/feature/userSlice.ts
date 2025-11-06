@@ -16,14 +16,24 @@ interface User {
 
 interface UserState {
   user: User | null;
+  allUsers: User[];
   loading: boolean;
+  loadingAll: boolean;
   error: string | null;
+  totalUsers: number;
+  currentPage: number;
+  totalPages: number;
 }
 
 const initialState: UserState = {
   user: null,
+  allUsers: [],
   loading: false,
+  loadingAll: false,
   error: null,
+  totalUsers: 0,
+  currentPage: 1,
+  totalPages: 1,
 };
 
 export const fetchUserProfile = createAsyncThunk(
@@ -40,6 +50,24 @@ export const fetchUserProfile = createAsyncThunk(
   }
 );
 
+export const fetchAllUsers = createAsyncThunk(
+  "user/fetchAllUsers",
+  async (
+    { page, limit }: { page: number; limit: number },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.get("/users/getallProfile", {
+        params: { page, limit, role: "technician" },
+      });
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch all users"
+      );
+    }
+  }
+);
 const userSlice = createSlice({
   name: "user",
   initialState,
@@ -60,6 +88,21 @@ const userSlice = createSlice({
       })
       .addCase(fetchUserProfile.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(fetchAllUsers.pending, (state) => {
+        state.loadingAll = true;
+        state.error = null;
+      })
+      .addCase(fetchAllUsers.fulfilled, (state, action) => {
+        state.loadingAll = false;
+        state.allUsers = action.payload.data.items;
+        state.totalUsers = action.payload.data.pagination.total_items;
+        state.currentPage = action.payload.data.pagination.current_page;
+        state.totalPages = action.payload.data.pagination.total_pages;
+      })
+      .addCase(fetchAllUsers.rejected, (state, action) => {
+        state.loadingAll = false;
         state.error = action.payload as string;
       });
   },

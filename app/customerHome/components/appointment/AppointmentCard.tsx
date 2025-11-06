@@ -24,12 +24,14 @@ const formatCurrency = (amount: number) => {
     currency: "VND",
   }).format(amount);
 };
-
 const getStatusInfo = (status: string) => {
   const statusMap: { [key: string]: { label: string; color: string } } = {
     pending: { label: "Chờ xác nhận", color: "#FF9800" },
-    confirmed: { label: "Đã xác nhận", color: "#4CAF50" },
-    completed: { label: "Hoàn thành", color: "#2196F3" },
+    assigned: { label: "Đã phân công", color: "#2196F3" },
+    check_in: { label: "Đã check-in", color: "#4CAF50" },
+    in_progress: { label: "Đang thực hiện", color: "#FF9800" },
+    repaired: { label: "Đã sửa chữa", color: "#4CAF50" },
+    completed: { label: "Hoàn thành", color: "#4CAF50" },
     cancelled: { label: "Đã hủy", color: "#F44336" },
   };
   return statusMap[status] || { label: status, color: "#666" };

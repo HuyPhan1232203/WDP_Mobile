@@ -1,10 +1,16 @@
 import api from "@/config/axios";
+import { auth } from "@/config/firebase";
 import { fetchUserProfile } from "@/redux/feature/userSlice";
 import { AppDispatch } from "@/redux/store";
 import { tokenStorage } from "@/utils/tokenStorage";
 import { Ionicons } from "@expo/vector-icons";
+import {
+  GoogleSignin,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 import { Link, useRouter } from "expo-router";
-import React, { useState } from "react";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ImageBackground,
@@ -21,8 +27,6 @@ import {
 import Toast from "react-native-toast-message";
 import { useDispatch } from "react-redux";
 
-// WebBrowser.maybeCompleteAuthSession();
-
 const Login = () => {
   const router = useRouter();
   const [username, setUsername] = useState("");
@@ -30,10 +34,6 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // const [request, response, promptAsync] = Google.useAuthRequest({
-  //   webClientId:
-  //     "871536505605-7vpli169042ggstr7ejij0ql62qdmic7.apps.googleusercontent.com", // Thay bằng Web Client ID từ Firebase
-  // });
   const dispatch = useDispatch<AppDispatch>();
   const handleEmailLogin = async () => {
     if (!username || !password) {
@@ -59,8 +59,17 @@ const Login = () => {
         text1: "Đăng nhập thành công",
         text2: `Chào mừng ${username}!`,
       });
-      dispatch(fetchUserProfile());
+      await dispatch(fetchUserProfile());
+      console.log(response);
+      if (response.data.role === "customer") {
+        router.push("/customerHome/customerHome");
+        return;
+      } else if (response.data.role === "technician") {
+        router.push("/technician");
+        return;
+      }
       router.push("/customerHome/customerHome");
+      // router.push("/technician/schedule/list");
     } catch (error: any) {
       console.error("Login Error:", error);
       Toast.show({
@@ -73,62 +82,124 @@ const Login = () => {
       setLoading(false);
     }
   };
-  // Xử lý response từ Google Auth
-  // useEffect(() => {
-  //   if (response?.type === "success") {
-  //     const { id_token } = response.params;
-  //     handleGoogleAuthSuccess(idToken);
-  //   }
-  // }, [response]);
-  // const handleGoogleAuthSuccess = async (idToken: string) => {
-  //   setLoading(true);
-  //   try {
-  //     // Tạo credential cho Firebase
-  //     const credential = GoogleAuthProvider.credential(idToken);
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId:
+        "871536505605-7vpli169042ggstr7ejij0ql62qdmic7.apps.googleusercontent.com",
+      offlineAccess: true,
+    });
+  }, []);
+  const handleGoogleLogin = async () => {
+    try {
+      setLoading(true);
 
-  //     // Đăng nhập với Firebase
-  //     const userCredential = await signInWithCredential(auth, credential);
-  //     const firebaseUser = userCredential.user;
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
 
-  //     // Gửi idToken đến backend
-  //     const backendResponse = await api.post("users/loginGoogle", {
-  //       idToken: idToken,
-  //     });
+      const userInfo = await GoogleSignin.signIn();
+      console.log(userInfo);
+      const { idToken } = userInfo.data;
 
-  //     const { accessToken } = backendResponse.data;
-  //     await tokenStorage.saveToken(accessToken);
+      if (!idToken) {
+        throw new Error("No ID token received from Google Sign-In");
+      }
 
-  //     Toast.show({
-  //       type: "success",
-  //       text1: "Đăng nhập thành công",
-  //       text2: `Chào mừng ${firebaseUser.displayName || firebaseUser.email}!`,
-  //     });
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      const userCredential = await signInWithCredential(auth, googleCredential);
+      const firebaseUser = userCredential.user;
 
-  //     router.push("/customerHome/customerHome");
-  //   } catch (error: any) {
-  //     console.error("Google Login Error:", error);
-  //     Toast.show({
-  //       type: "error",
-  //       text1: "Đăng nhập Google thất bại",
-  //       text2:
-  //         error.response?.data?.message || error.message || "Vui lòng thử lại",
-  //     });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-  // const handleGoogleLogin = async () => {
-  //   try {
-  //     await promptAsync();
-  //   } catch (error: any) {
-  //     console.error("Google Login Error:", error);
-  //     Toast.show({
-  //       type: "error",
-  //       text1: "Lỗi",
-  //       text2: "Không thể mở Google Sign-In",
-  //     });
-  //   }
-  // };
+      const firebaseIdToken = await firebaseUser.getIdToken();
+
+      // DEBUG: Log token details
+      console.log("🔑 Firebase User ID:", firebaseUser.uid);
+      console.log("📧 Email:", firebaseUser.email);
+      console.log(
+        "🎫 Token (first 50 chars):",
+        firebaseIdToken.substring(0, 50)
+      );
+      console.log("🎫 Token length:", firebaseIdToken.length);
+
+      // Decode token to see claims (for debugging only - not secure for production)
+      try {
+        const tokenParts = firebaseIdToken.split(".");
+        if (tokenParts.length === 3) {
+          // Use base64url decoding for JWT
+          const base64 = tokenParts[1].replace(/-/g, "+").replace(/_/g, "/");
+          const paddedBase64 =
+            base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+          const payload = JSON.parse(atob(paddedBase64));
+          console.log("📦 Token payload:", {
+            aud: payload.aud,
+            iss: payload.iss,
+            exp: new Date(payload.exp * 1000),
+            iat: new Date(payload.iat * 1000),
+          });
+        }
+      } catch (decodeError) {
+        console.warn("⚠️ Could not decode token payload:", decodeError);
+      }
+
+      const backendResponse = await api.post("users/loginfirebase", {
+        idToken: firebaseIdToken,
+      });
+
+      console.log("✅ Backend response:", backendResponse.data);
+
+      const { accessToken } = backendResponse.data;
+      await tokenStorage.saveToken(accessToken);
+
+      Toast.show({
+        type: "success",
+        text1: "Đăng nhập thành công",
+        text2: `Chào mừng ${firebaseUser.displayName || firebaseUser.email}!`,
+      });
+
+      await dispatch(fetchUserProfile());
+      router.push("/customerHome/customerHome");
+    } catch (error: any) {
+      console.error("Google Login Error:", error);
+
+      // Enhanced error logging for 401
+      if (error.response?.status === 401) {
+        console.error("❌ 401 Unauthorized Details:", {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers,
+        });
+      }
+
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        Toast.show({
+          type: "info",
+          text1: "Đã hủy đăng nhập",
+        });
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        Toast.show({
+          type: "info",
+          text1: "Đang xử lý...",
+        });
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Toast.show({
+          type: "error",
+          text1: "Lỗi",
+          text2: "Google Play Services không khả dụng",
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Đăng nhập Google thất bại",
+          text2:
+            error.response?.data?.message ||
+            error.message ||
+            "Vui lòng thử lại",
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <ImageBackground
@@ -143,7 +214,7 @@ const Login = () => {
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => router.push("/")}
+            onPress={() => router.back()}
           >
             <Ionicons name="arrow-back" size={20} color="#333" />
             <Text style={styles.backButtonText}>Trang chủ</Text>
@@ -214,13 +285,12 @@ const Login = () => {
               )}
             </TouchableOpacity>
 
-            {/* <TouchableOpacity
+            <TouchableOpacity
               style={styles.googleButton}
               onPress={handleGoogleLogin}
-              disabled={!request || loading}
             >
               <Text style={styles.googleButtonText}>Đăng nhập với Google</Text>
-            </TouchableOpacity> */}
+            </TouchableOpacity>
 
             <View style={styles.registerContainer}>
               <Text style={styles.registerText}>Chưa có tài khoản? </Text>

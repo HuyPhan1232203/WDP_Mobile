@@ -190,7 +190,7 @@ const issueTypeSlice = createSlice({
       })
       .addCase(fetchAllIssueTypes.fulfilled, (state, action) => {
         state.loading = false;
-        state.issueTypes = action.payload.data;
+        state.issueTypes = action.payload.data.items;
       })
       .addCase(fetchAllIssueTypes.rejected, (state, action) => {
         state.loading = false;
