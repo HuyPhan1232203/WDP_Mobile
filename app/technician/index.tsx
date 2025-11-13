@@ -47,7 +47,7 @@ const TechnicianCheckList = () => {
       loadChecklists(1, user._id);
     }
   }, [user?._id]);
-
+  console.log(checklists);
   const loadChecklists = async (page: number, userId: string) => {
     if (!userId) return;
 
@@ -169,12 +169,6 @@ const TechnicianCheckList = () => {
         label: "Đã chấp nhận",
         icon: "checkmark-circle",
       },
-      rejected: {
-        color: "#D32F2F",
-        bg: "#FFEBEE",
-        label: "Đã từ chối",
-        icon: "close-circle",
-      },
       canceled: {
         color: "#757575",
         bg: "#F5F5F5",
@@ -199,14 +193,28 @@ const TechnicianCheckList = () => {
   };
 
   const getAppointmentStatusConfig = (status: string) => {
-    const configs: { [key: string]: { color: string; label: string } } = {
-      pending: { color: "#F57C00", label: "Chờ xác nhận" },
-      confirmed: { color: "#1976D2", label: "Đã xác nhận" },
-      in_progress: { color: "#9C27B0", label: "Đang xử lý" },
-      completed: { color: "#388E3C", label: "Hoàn thành" },
-      cancelled: { color: "#757575", label: "Đã hủy" },
+    const statusMap: {
+      [key: string]: { label: string; color: string; icon: string };
+    } = {
+      pending: { label: "Chờ xác nhận", color: "#FF9800", icon: "time" },
+      assigned: { label: "Đã phân công", color: "#2196F3", icon: "person" },
+      check_in: { label: "Đã check-in", color: "#4CAF50", icon: "checkmark" },
+      in_progress: {
+        label: "Đang thực hiện",
+        color: "#FF9800",
+        icon: "construct",
+      },
+      repaired: { label: "Đã sửa chữa", color: "#4CAF50", icon: "wrench" },
+      completed: {
+        label: "Hoàn thành",
+        color: "#4CAF50",
+        icon: "checkmark-done-circle",
+      },
+      cancelled: { label: "Đã hủy", color: "#F44336", icon: "close-circle" },
     };
-    return configs[status] || { color: "#757575", label: status };
+    return (
+      statusMap[status] || { label: status, color: "#666", icon: "help-circle" }
+    );
   };
 
   const getCategoryLabel = (category: string) => {
@@ -238,7 +246,13 @@ const TechnicianCheckList = () => {
       <TouchableOpacity
         style={styles.checklistCard}
         activeOpacity={0.7}
-        onPress={() => {}}
+        onPress={() =>
+          router.push(
+            `/technician/detail?item=${encodeURIComponent(
+              JSON.stringify(item)
+            )}`
+          )
+        }
       >
         {/* Header with category and date */}
         <View style={styles.cardHeader}>
@@ -414,17 +428,10 @@ const TechnicianCheckList = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Quản lý Checklist</Text>
         <TouchableOpacity
-          style={styles.notificationButton}
-          onPress={() => {
-            // Navigate to notifications
-          }}
+          style={styles.settingsButton}
+          onPress={() => router.push("/setting/setting")}
         >
-          <Ionicons name="notifications-outline" size={24} color="#333" />
-          <View style={styles.notificationBadge}>
-            <Text style={styles.notificationBadgeText}>
-              {pagination?.total_items || 0}
-            </Text>
-          </View>
+          <Ionicons name="settings-outline" size={24} color="#333" />
         </TouchableOpacity>
       </View>
 
@@ -566,13 +573,13 @@ export default TechnicianCheckList;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#F0F8F0", // Softer green background for friendliness
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#F0F8F0",
   },
   loadingText: {
     marginTop: 12,
@@ -593,6 +600,9 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     color: "#212121",
+  },
+  settingsButton: {
+    padding: 8,
   },
   notificationButton: {
     position: "relative",
@@ -706,14 +716,14 @@ const styles = StyleSheet.create({
   },
   checklistCard: {
     backgroundColor: "white",
-    borderRadius: 16,
+    borderRadius: 20, // More rounded for friendliness
     marginBottom: 12,
     overflow: "hidden",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    elevation: 3, // Slightly higher shadow
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   cardHeader: {
     flexDirection: "row",
@@ -928,17 +938,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 20,
     bottom: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64, // Slightly larger
+    height: 64,
+    borderRadius: 32,
     backgroundColor: "#4CAF50",
     alignItems: "center",
     justifyContent: "center",
-    elevation: 6,
+    elevation: 8, // Higher elevation
     shadowColor: "#4CAF50",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
   },
   modalOverlay: {
     flex: 1,
