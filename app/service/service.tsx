@@ -1,7 +1,4 @@
-import {
-  createAppointment,
-  getMyAppointments,
-} from "@/redux/feature/appointmentSlice";
+import { createAppointment } from "@/redux/feature/appointmentSlice";
 import {
   fetchCentersWithSchedule,
   parseDayOfWeek,
@@ -37,9 +34,6 @@ const Service = () => {
   const { centers, loading: centersLoading } = useAppSelector(
     (state) => state.center
   );
-  useEffect(() => {
-    console.log(centers);
-  }, [centers]);
   const { allUsers, loadingAll: techniciansLoading } = useAppSelector(
     (state) => state.user
   );
@@ -63,7 +57,6 @@ const Service = () => {
     dispatch(fetchServices());
     dispatch(fetchAllUsers({ page: 1, limit: 50 }));
 
-    // Fetch centers with schedule for next 4 weeks
     const today = new Date();
     const endDate = new Date(today);
     endDate.setDate(today.getDate() + 28);
@@ -75,7 +68,9 @@ const Service = () => {
       })
     );
   }, []);
-
+  const formatCurrency = (amount: number) => {
+    return `${amount.toLocaleString("vi-VN")} VND`;
+  };
   const formatDateForAPI = (date: Date) => {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -98,34 +93,28 @@ const Service = () => {
     }`,
     value: vehicle._id,
   }));
-
+  console.log(JSON.stringify(services));
   const serviceItems = services?.map((service) => ({
-    label: service.service_name,
+    label: `${service.service_name} - ${formatCurrency(service.base_price)}`,
     value: service._id,
   }));
-
-  const technicianItems = allUsers
-    .filter((user) => user.role === "technician")
-    .map((user) => ({
-      label: user.fullName,
-      value: user._id,
-    }));
 
   const selectedCenterData = centers.find((c) => c._id === selectedCenter);
   const selectedWeekData = selectedCenterData?.weeks?.find(
     (w) => w.week_number === selectedWeek
   );
+  const selectedDayData = selectedWeekData?.days?.find(
+    (d) => d.date === selectedDate
+  );
 
-  const timeSlots = [
-    "08:00",
-    "09:00",
-    "10:00",
-    "11:00",
-    "13:00",
-    "14:00",
-    "15:00",
-    "16:00",
-  ];
+  // Lấy technicians từ center đã chọn
+  const technicianItems =
+    selectedCenterData?.technicians
+      ?.filter((tech) => tech.status === "on")
+      .map((tech) => ({
+        label: tech.user.fullName,
+        value: tech.user._id,
+      })) || [];
 
   const handleNextStep = () => {
     if (currentStep === 1 && (!selectedVehicle || !selectedService)) {
@@ -181,15 +170,16 @@ const Service = () => {
     };
     console.log(JSON.stringify(appointmentData));
     try {
-      const res = await dispatch(createAppointment(appointmentData)).unwrap();
-      console.log(res);
+      const res = await dispatch(
+        createAppointment(appointmentData as any)
+      ).unwrap();
       Toast.show({
         type: "success",
         text1: "Đặt lịch thành công!",
         text2: "Chúng tôi sẽ liên hệ với bạn sớm.",
       });
-      router.back();
-      dispatch(getMyAppointments({ page: 1, limit: 10 }));
+
+      router.push(`/appointment/appointment?appointmentId=${res.data._id}`);
     } catch (error) {
       Toast.show({
         type: "error",
@@ -299,6 +289,7 @@ const Service = () => {
                 setSelectedWeek(null);
                 setSelectedDate(null);
                 setSelectedTime(null);
+                setSelectedTechnician(null);
               }}
             >
               <View style={styles.centerHeader}>
@@ -307,14 +298,35 @@ const Service = () => {
                   size={24}
                   color={selectedCenter === center._id ? "#4CAF50" : "#666"}
                 />
-                <Text style={styles.centerName}>{center.center_name}</Text>
+                <Text
+                  style={[
+                    styles.centerName,
+                    selectedCenter === center._id && styles.centerNameActive,
+                  ]}
+                >
+                  {center.center_name}
+                </Text>
               </View>
-              <Text style={styles.centerAddress}>
-                <Ionicons name="location" size={14} /> {center.address}
-              </Text>
-              <Text style={styles.centerPhone}>
-                <Ionicons name="call" size={14} /> {center.phone}
-              </Text>
+              <View style={styles.centerInfo}>
+                <View style={styles.infoRow}>
+                  <Ionicons name="location" size={14} color="#666" />
+                  <Text style={styles.centerAddress} numberOfLines={2}>
+                    {center.address}
+                  </Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Ionicons name="call" size={14} color="#666" />
+                  <Text style={styles.centerPhone}>{center.phone}</Text>
+                </View>
+                <View style={styles.infoRow}>
+                  <Ionicons name="people" size={14} color="#666" />
+                  <Text style={styles.technicianCount}>
+                    {center.technicians?.filter((t) => t.status === "on")
+                      .length || 0}{" "}
+                    kỹ thuật viên
+                  </Text>
+                </View>
+              </View>
             </TouchableOpacity>
           ))}
         </View>
@@ -327,99 +339,163 @@ const Service = () => {
       <Text style={styles.stepTitle}>Chọn ngày và giờ</Text>
 
       {/* Week Selection */}
-      <View style={styles.weekSelector}>
-        <Text style={styles.sectionLabel}>Chọn tuần</Text>
+      <View style={styles.sectionContainer}>
+        <Text style={styles.sectionLabel}>
+          <Ionicons name="calendar-outline" size={16} color="#333" /> Chọn tuần
+        </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {selectedCenterData?.weeks?.map((week) => (
-            <TouchableOpacity
-              key={week.week_number}
-              style={[
-                styles.weekCard,
-                selectedWeek === week.week_number && styles.weekCardActive,
-              ]}
-              onPress={() => {
-                setSelectedWeek(week.week_number);
-                setSelectedDate(null);
-                setSelectedTime(null);
-              }}
-            >
-              <Text style={styles.weekNumber}>Tuần {week.week_number}</Text>
-              <Text style={styles.weekDate}>
-                {formatDisplayDate(week.week_start)} -{" "}
-                {formatDisplayDate(week.week_end)}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <View style={styles.weekList}>
+            {selectedCenterData?.weeks?.map((week) => (
+              <TouchableOpacity
+                key={week.week_number}
+                style={[
+                  styles.weekCard,
+                  selectedWeek === week.week_number && styles.weekCardActive,
+                ]}
+                onPress={() => {
+                  setSelectedWeek(week.week_number);
+                  setSelectedDate(null);
+                  setSelectedTime(null);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.weekNumber,
+                    selectedWeek === week.week_number &&
+                      styles.weekNumberActive,
+                  ]}
+                >
+                  Tuần {week.week_number}
+                </Text>
+                <Text
+                  style={[
+                    styles.weekDate,
+                    selectedWeek === week.week_number && styles.weekDateActive,
+                  ]}
+                >
+                  {formatDisplayDate(week.week_start)} -{" "}
+                  {formatDisplayDate(week.week_end)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </ScrollView>
       </View>
 
       {/* Date Selection */}
       {selectedWeek && (
-        <View style={styles.dateSelector}>
-          <Text style={styles.sectionLabel}>Chọn ngày</Text>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionLabel}>
+            <Ionicons name="today-outline" size={16} color="#333" /> Chọn ngày
+          </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {selectedWeekData?.days.map((day) => (
-              <TouchableOpacity
-                key={day.date}
-                style={[
-                  styles.dateCard,
-                  selectedDate === day.date && styles.dateCardActive,
-                  day.is_close && styles.dateCardDisabled,
-                ]}
-                onPress={() => {
-                  if (!day.is_close) {
-                    setSelectedDate(day.date);
-                    setSelectedTime(null);
-                  }
-                }}
-                disabled={day.is_close}
-              >
-                <Text style={styles.dayOfWeek}>
-                  {parseDayOfWeek(day.day_of_week)}
-                </Text>
-                <Text style={styles.dateText}>
-                  {formatDisplayDate(day.date)}
-                </Text>
-                {day.is_close ? (
-                  <Text style={styles.closedText}>Đóng cửa</Text>
-                ) : (
-                  <Text style={styles.slotsText}>
-                    {day.availableSlots} slot
+            <View style={styles.dateList}>
+              {selectedWeekData?.days.map((day) => (
+                <TouchableOpacity
+                  key={day.date}
+                  style={[
+                    styles.dateCard,
+                    selectedDate === day.date && styles.dateCardActive,
+                    day.is_close && styles.dateCardDisabled,
+                  ]}
+                  onPress={() => {
+                    if (!day.is_close) {
+                      setSelectedDate(day.date);
+                      setSelectedTime(null);
+                    }
+                  }}
+                  disabled={day.is_close}
+                >
+                  <Text
+                    style={[
+                      styles.dayOfWeek,
+                      selectedDate === day.date && styles.dayOfWeekActive,
+                      day.is_close && styles.textDisabled,
+                    ]}
+                  >
+                    {parseDayOfWeek(day.day_of_week)}
                   </Text>
-                )}
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={[
+                      styles.dateText,
+                      selectedDate === day.date && styles.dateTextActive,
+                      day.is_close && styles.textDisabled,
+                    ]}
+                  >
+                    {formatDisplayDate(day.date)}
+                  </Text>
+                  {day.is_close ? (
+                    <View style={styles.closedBadge}>
+                      <Text style={styles.closedText}>Đóng cửa</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.slotsBadge}>
+                      <Ionicons
+                        name="checkmark-circle"
+                        size={12}
+                        color="#4CAF50"
+                      />
+                      <Text style={styles.slotsText}>
+                        {day.remainingSlots} slot
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
           </ScrollView>
         </View>
       )}
 
       {/* Time Selection */}
-      {selectedDate && (
-        <View style={styles.timeSelector}>
-          <Text style={styles.sectionLabel}>Chọn giờ</Text>
+      {selectedDate && selectedDayData && (
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionLabel}>
+            <Ionicons name="time-outline" size={16} color="#333" /> Chọn giờ
+          </Text>
           <View style={styles.timeGrid}>
-            {timeSlots.map((time) => (
+            {selectedDayData.timeSlots.map((slot) => (
               <TouchableOpacity
-                key={time}
+                key={slot.time}
                 style={[
                   styles.timeSlot,
-                  selectedTime === time && styles.timeSlotActive,
+                  selectedTime === slot.time && styles.timeSlotActive,
+                  slot.isFull && styles.timeSlotDisabled,
                 ]}
-                onPress={() => setSelectedTime(time)}
+                onPress={() => !slot.isFull && setSelectedTime(slot.time)}
+                disabled={slot.isFull}
               >
                 <Ionicons
                   name="time"
-                  size={16}
-                  color={selectedTime === time ? "#fff" : "#666"}
+                  size={18}
+                  color={
+                    slot.isFull
+                      ? "#ccc"
+                      : selectedTime === slot.time
+                      ? "#fff"
+                      : "#4CAF50"
+                  }
                 />
-                <Text
-                  style={[
-                    styles.timeText,
-                    selectedTime === time && styles.timeTextActive,
-                  ]}
-                >
-                  {time}
-                </Text>
+                <View style={styles.timeInfo}>
+                  <Text
+                    style={[
+                      styles.timeText,
+                      selectedTime === slot.time && styles.timeTextActive,
+                      slot.isFull && styles.textDisabled,
+                    ]}
+                  >
+                    {slot.time}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.availableText,
+                      selectedTime === slot.time && styles.availableTextActive,
+                      slot.isFull && styles.textDisabled,
+                    ]}
+                  >
+                    {slot.isFull ? "Đã đầy" : `${slot.available} slot`}
+                  </Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
@@ -435,64 +511,78 @@ const Service = () => {
       <View style={styles.summaryCard}>
         <View style={styles.summaryRow}>
           <Ionicons name="car" size={20} color="#4CAF50" />
-          <Text style={styles.summaryLabel}>Xe:</Text>
-          <Text style={styles.summaryValue}>
-            {vehicleItems.find((v) => v.value === selectedVehicle)?.label}
-          </Text>
+          <View style={styles.summaryTextContainer}>
+            <Text style={styles.summaryLabel}>Xe</Text>
+            <Text style={styles.summaryValue}>
+              {vehicleItems.find((v) => v.value === selectedVehicle)?.label}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.summaryRow}>
           <Ionicons name="construct" size={20} color="#4CAF50" />
-          <Text style={styles.summaryLabel}>Dịch vụ:</Text>
-          <Text style={styles.summaryValue}>
-            {serviceItems.find((s) => s.value === selectedService)?.label}
-          </Text>
+          <View style={styles.summaryTextContainer}>
+            <Text style={styles.summaryLabel}>Dịch vụ</Text>
+            <Text style={styles.summaryValue}>
+              {serviceItems.find((s) => s.value === selectedService)?.label}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.summaryRow}>
           <Ionicons name="business" size={20} color="#4CAF50" />
-          <Text style={styles.summaryLabel}>Trung tâm:</Text>
-          <Text style={styles.summaryValue}>
-            {selectedCenterData?.center_name}
-          </Text>
+          <View style={styles.summaryTextContainer}>
+            <Text style={styles.summaryLabel}>Trung tâm</Text>
+            <Text style={styles.summaryValue}>
+              {selectedCenterData?.center_name}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.summaryRow}>
           <Ionicons name="calendar" size={20} color="#4CAF50" />
-          <Text style={styles.summaryLabel}>Ngày:</Text>
-          <Text style={styles.summaryValue}>
-            {selectedDate && formatDisplayDate(selectedDate)}
-          </Text>
+          <View style={styles.summaryTextContainer}>
+            <Text style={styles.summaryLabel}>Ngày</Text>
+            <Text style={styles.summaryValue}>
+              {selectedDayData &&
+                `${parseDayOfWeek(
+                  selectedDayData.day_of_week
+                )}, ${formatDisplayDate(selectedDate!)}`}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.summaryRow}>
           <Ionicons name="time" size={20} color="#4CAF50" />
-          <Text style={styles.summaryLabel}>Giờ:</Text>
-          <Text style={styles.summaryValue}>{selectedTime}</Text>
+          <View style={styles.summaryTextContainer}>
+            <Text style={styles.summaryLabel}>Giờ</Text>
+            <Text style={styles.summaryValue}>{selectedTime}</Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>
-          <Ionicons name="person" size={16} /> Người bảo dưỡng (tùy chọn)
-        </Text>
-        <Dropdown
-          style={styles.dropdown}
-          placeholderStyle={styles.placeholderStyle}
-          selectedTextStyle={styles.selectedTextStyle}
-          data={technicianItems}
-          search
-          maxHeight={300}
-          labelField="label"
-          valueField="value"
-          placeholder={
-            techniciansLoading ? "Đang tải..." : "Chọn người bảo dưỡng"
-          }
-          searchPlaceholder="Tìm kiếm..."
-          value={selectedTechnician}
-          onChange={(item) => setSelectedTechnician(item.value)}
-        />
-      </View>
+      {technicianItems.length > 0 && (
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>
+            <Ionicons name="person" size={16} /> Chọn kỹ thuật viên (tùy chọn)
+          </Text>
+          <Dropdown
+            style={styles.dropdown}
+            placeholderStyle={styles.placeholderStyle}
+            selectedTextStyle={styles.selectedTextStyle}
+            containerStyle={styles.dropdownContainer}
+            data={technicianItems}
+            search
+            maxHeight={250}
+            labelField="label"
+            valueField="value"
+            placeholder="Chọn kỹ thuật viên"
+            searchPlaceholder="Tìm kiếm..."
+            value={selectedTechnician}
+            onChange={(item) => setSelectedTechnician(item.value)}
+          />
+        </View>
+      )}
 
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>
@@ -524,7 +614,10 @@ const Service = () => {
 
       {renderStepIndicator()}
 
-      <ScrollView style={styles.scrollView}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}
@@ -682,7 +775,7 @@ const styles = StyleSheet.create({
   },
   centerCard: {
     backgroundColor: "white",
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     borderWidth: 2,
     borderColor: "#E0E0E0",
@@ -694,40 +787,60 @@ const styles = StyleSheet.create({
   centerHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
   },
   centerName: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#333",
     marginLeft: 10,
+    flex: 1,
+  },
+  centerNameActive: {
+    color: "#4CAF50",
+  },
+  centerInfo: {
+    gap: 8,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   centerAddress: {
     fontSize: 14,
     color: "#666",
-    marginBottom: 4,
+    flex: 1,
   },
   centerPhone: {
     fontSize: 14,
     color: "#666",
   },
-  weekSelector: {
-    marginBottom: 20,
+  technicianCount: {
+    fontSize: 14,
+    color: "#666",
+  },
+  sectionContainer: {
+    marginBottom: 24,
   },
   sectionLabel: {
     fontSize: 16,
     fontWeight: "600",
     color: "#333",
-    marginBottom: 10,
+    marginBottom: 12,
+  },
+  weekList: {
+    flexDirection: "row",
+    gap: 12,
+    paddingRight: 20,
   },
   weekCard: {
     backgroundColor: "white",
     borderRadius: 12,
     padding: 16,
-    marginRight: 12,
     borderWidth: 2,
     borderColor: "#E0E0E0",
-    minWidth: 120,
+    minWidth: 140,
   },
   weekCardActive: {
     borderColor: "#4CAF50",
@@ -739,21 +852,28 @@ const styles = StyleSheet.create({
     color: "#333",
     marginBottom: 4,
   },
+  weekNumberActive: {
+    color: "#4CAF50",
+  },
   weekDate: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#666",
   },
-  dateSelector: {
-    marginBottom: 20,
+  weekDateActive: {
+    color: "#4CAF50",
+  },
+  dateList: {
+    flexDirection: "row",
+    gap: 12,
+    paddingRight: 20,
   },
   dateCard: {
     backgroundColor: "white",
     borderRadius: 12,
-    padding: 12,
-    marginRight: 12,
+    padding: 14,
     borderWidth: 2,
     borderColor: "#E0E0E0",
-    minWidth: 80,
+    minWidth: 90,
     alignItems: "center",
   },
   dateCardActive: {
@@ -762,34 +882,51 @@ const styles = StyleSheet.create({
   },
   dateCardDisabled: {
     backgroundColor: "#F5F5F5",
-    opacity: 0.5,
+    opacity: 0.6,
   },
   dayOfWeek: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#666",
-    marginBottom: 4,
+    marginBottom: 6,
+    fontWeight: "500",
+  },
+  dayOfWeekActive: {
+    color: "#4CAF50",
   },
   dateText: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#333",
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  dateTextActive: {
+    color: "#4CAF50",
+  },
+  closedBadge: {
+    backgroundColor: "#FFEBEE",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   closedText: {
     fontSize: 11,
     color: "#F44336",
+    fontWeight: "600",
+  },
+  slotsBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   slotsText: {
     fontSize: 11,
     color: "#4CAF50",
-  },
-  timeSelector: {
-    marginBottom: 20,
+    fontWeight: "600",
   },
   timeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: 12,
   },
   timeSlot: {
     backgroundColor: "white",
@@ -799,43 +936,63 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0",
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    minWidth: "30%",
+    gap: 10,
+    width: "48%",
   },
   timeSlotActive: {
     borderColor: "#4CAF50",
     backgroundColor: "#4CAF50",
   },
+  timeSlotDisabled: {
+    backgroundColor: "#F5F5F5",
+    opacity: 0.6,
+  },
+  timeInfo: {
+    flex: 1,
+  },
   timeText: {
-    fontSize: 14,
-    color: "#666",
+    fontSize: 15,
+    color: "#333",
     fontWeight: "600",
   },
   timeTextActive: {
     color: "white",
   },
+  availableText: {
+    fontSize: 11,
+    color: "#4CAF50",
+    marginTop: 2,
+  },
+  availableTextActive: {
+    color: "#E8F5E9",
+  },
+  textDisabled: {
+    color: "#ccc",
+  },
   summaryCard: {
     backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 20,
-    gap: 12,
+    gap: 16,
   },
   summaryRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  summaryTextContainer: {
+    flex: 1,
   },
   summaryLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#666",
-    fontWeight: "600",
-    minWidth: 80,
+    marginBottom: 4,
   },
   summaryValue: {
-    fontSize: 14,
+    fontSize: 15,
     color: "#333",
-    flex: 1,
+    fontWeight: "600",
   },
   textArea: {
     backgroundColor: "white",
@@ -852,7 +1009,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     padding: 20,
     backgroundColor: "white",
-    gap: 10,
+    gap: 12,
     elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },

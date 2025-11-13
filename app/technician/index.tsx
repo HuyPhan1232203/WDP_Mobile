@@ -1,467 +1,1039 @@
-import { createCheckList } from "@/redux/feature/checkListSlice";
-import { fetchAllIssueTypes } from "@/redux/feature/issueTypeSlice";
-import { fetchAllParts } from "@/redux/feature/partSlice";
+import {
+  completeCheckList,
+  getCheckLists,
+} from "@/redux/feature/checkListSlice";
+import { fetchUserProfile } from "@/redux/feature/userSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  FlatList,
+  Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Dropdown } from "react-native-element-dropdown";
 import Toast from "react-native-toast-message";
 
-interface PartItem {
-  part_id: string;
-  quantity: number;
-}
-
-const CreateCheckList = () => {
+const TechnicianCheckList = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const params = useLocalSearchParams();
-  const appointmentId = params.appointmentId as string;
 
-  const { parts, loading: partsLoading } = useAppSelector(
-    (state) => state.part
-  );
-  const { issueTypes, loading: issueTypesLoading } = useAppSelector(
-    (state) => state.issueType
-  );
-  const { loading: checklistLoading } = useAppSelector(
+  const { checklists, pagination, loading, completing } = useAppSelector(
     (state) => state.checklist
   );
 
-  const [issueTypeId, setIssueTypeId] = useState("");
-  const [issueDescription, setIssueDescription] = useState("");
-  const [solutionApplied, setSolutionApplied] = useState("");
-  const [selectedParts, setSelectedParts] = useState<PartItem[]>([]);
-  const [currentPartId, setCurrentPartId] = useState("");
-  const [currentQuantity, setCurrentQuantity] = useState("1");
+  const { user, loading: userLoading } = useAppSelector((state) => state.user);
+
+  const [refreshing, setRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [selectedChecklist, setSelectedChecklist] = useState<any>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("all");
 
   useEffect(() => {
-    dispatch(fetchAllParts());
-    dispatch(fetchAllIssueTypes());
+    if (!user) {
+      dispatch(fetchUserProfile());
+    }
   }, []);
 
-  const partItems = parts.map((part) => ({
-    label: `${part.part_name} - ${part.part_number}`,
-    value: part._id,
-  }));
-
-  const issueTypeItems = issueTypes.map((issueType) => ({
-    label: `${issueType.issue_name} (${issueType.severity})`,
-    value: issueType._id,
-  }));
-
-  const addPart = () => {
-    if (!currentPartId) {
-      Toast.show({
-        type: "error",
-        text1: "Vui lòng chọn phụ tùng",
-      });
-      return;
+  useEffect(() => {
+    if (user?._id) {
+      loadChecklists(1, user._id);
     }
+  }, [user?._id]);
 
-    const quantity = parseInt(currentQuantity);
-    if (quantity <= 0) {
-      Toast.show({
-        type: "error",
-        text1: "Số lượng phải lớn hơn 0",
-      });
-      return;
-    }
-
-    // Check if part already exists
-    const existingIndex = selectedParts.findIndex(
-      (p) => p.part_id === currentPartId
-    );
-    if (existingIndex !== -1) {
-      // Update quantity
-      const updatedParts = [...selectedParts];
-      updatedParts[existingIndex].quantity = quantity;
-      setSelectedParts(updatedParts);
-    } else {
-      // Add new part
-      setSelectedParts([
-        ...selectedParts,
-        { part_id: currentPartId, quantity },
-      ]);
-    }
-
-    // Reset inputs
-    setCurrentPartId("");
-    setCurrentQuantity("1");
-  };
-
-  const removePart = (partId: string) => {
-    setSelectedParts(selectedParts.filter((p) => p.part_id !== partId));
-  };
-
-  const handleSubmit = async () => {
-    if (!issueTypeId || !issueDescription || !solutionApplied) {
-      Toast.show({
-        type: "error",
-        text1: "Vui lòng điền đầy đủ thông tin",
-      });
-      return;
-    }
-
-    const checklistData = {
-      appointment_id: appointmentId,
-      issue_type_id: issueTypeId,
-      issue_description: issueDescription,
-      solution_applied: solutionApplied,
-      parts: selectedParts,
-    };
+  const loadChecklists = async (page: number, userId: string) => {
+    if (!userId) return;
 
     try {
-      await dispatch(createCheckList(checklistData)).unwrap();
-      Toast.show({
-        type: "success",
-        text1: "Tạo checklist thành công!",
-      });
-      router.back();
+      await dispatch(
+        getCheckLists({
+          page,
+          limit: 10,
+          technician_id: userId,
+        })
+      ).unwrap();
+      setCurrentPage(page);
     } catch (error) {
       Toast.show({
         type: "error",
         text1: "Lỗi",
-        text2: "Không thể tạo checklist",
+        text2: "Không thể tải danh sách checklist",
       });
     }
   };
 
-  const getPartName = (partId: string) => {
-    const part = parts.find((p) => p._id === partId);
-    return part ? `${part.part_name} - ${part.part_number}` : "";
+  const handleRefresh = async () => {
+    if (!user?._id) return;
+    setRefreshing(true);
+    await loadChecklists(1, user._id);
+    setRefreshing(false);
   };
+
+  const handleLoadMore = () => {
+    if (pagination?.has_next_page && !loading && user?._id) {
+      loadChecklists(currentPage + 1, user._id);
+    }
+  };
+
+  const handleCompletePress = (checklist: any) => {
+    setSelectedChecklist(checklist);
+    setShowCompleteModal(true);
+  };
+
+  const handleConfirmComplete = async () => {
+    if (!selectedChecklist || !user?._id) return;
+
+    try {
+      await dispatch(completeCheckList(selectedChecklist._id)).unwrap();
+      Toast.show({
+        type: "success",
+        text1: "Hoàn thành checklist thành công!",
+      });
+      setShowCompleteModal(false);
+      setSelectedChecklist(null);
+      await loadChecklists(1, user._id);
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi",
+        text2: "Không thể hoàn thành checklist",
+      });
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatAppointmentDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const icons: { [key: string]: string } = {
+      tire: "bicycle",
+      charging: "battery-charging",
+      brake: "hand-left",
+      motor: "settings",
+      battery: "battery-half",
+    };
+    return icons[category] || "build";
+  };
+
+  const getSeverityConfig = (severity: string) => {
+    const configs: {
+      [key: string]: { color: string; bg: string; label: string };
+    } = {
+      critical: { color: "#D32F2F", bg: "#FFEBEE", label: "Nghiêm trọng" },
+      major: { color: "#F57C00", bg: "#FFF3E0", label: "Quan trọng" },
+      moderate: { color: "#FBC02D", bg: "#FFFDE7", label: "Trung bình" },
+      minor: { color: "#388E3C", bg: "#E8F5E9", label: "Nhẹ" },
+    };
+    return (
+      configs[severity] || { color: "#757575", bg: "#F5F5F5", label: severity }
+    );
+  };
+
+  const getStatusConfig = (status: string) => {
+    const configs: {
+      [key: string]: { color: string; bg: string; label: string; icon: string };
+    } = {
+      pending: {
+        color: "#F57C00",
+        bg: "#FFF3E0",
+        label: "Chờ xử lý",
+        icon: "time",
+      },
+      accepted: {
+        color: "#1976D2",
+        bg: "#E3F2FD",
+        label: "Đã chấp nhận",
+        icon: "checkmark-circle",
+      },
+      rejected: {
+        color: "#D32F2F",
+        bg: "#FFEBEE",
+        label: "Đã từ chối",
+        icon: "close-circle",
+      },
+      canceled: {
+        color: "#757575",
+        bg: "#F5F5F5",
+        label: "Đã hủy",
+        icon: "ban",
+      },
+      completed: {
+        color: "#388E3C",
+        bg: "#E8F5E9",
+        label: "Hoàn thành",
+        icon: "checkmark-done-circle",
+      },
+    };
+    return (
+      configs[status] || {
+        color: "#757575",
+        bg: "#F5F5F5",
+        label: status,
+        icon: "ellipse",
+      }
+    );
+  };
+
+  const getAppointmentStatusConfig = (status: string) => {
+    const configs: { [key: string]: { color: string; label: string } } = {
+      pending: { color: "#F57C00", label: "Chờ xác nhận" },
+      confirmed: { color: "#1976D2", label: "Đã xác nhận" },
+      in_progress: { color: "#9C27B0", label: "Đang xử lý" },
+      completed: { color: "#388E3C", label: "Hoàn thành" },
+      cancelled: { color: "#757575", label: "Đã hủy" },
+    };
+    return configs[status] || { color: "#757575", label: status };
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: { [key: string]: string } = {
+      tire: "Lốp xe",
+      charging: "Sạc điện",
+      brake: "Phanh",
+      motor: "Động cơ",
+      battery: "Pin",
+    };
+    return labels[category] || category;
+  };
+
+  const filteredChecklists = checklists.filter((item) => {
+    if (filterStatus === "all") return true;
+    return item.status === filterStatus;
+  });
+
+  const renderCheckListItem = ({ item }: { item: any }) => {
+    const severityConfig = getSeverityConfig(
+      item.issue_type_id?.severity || "moderate"
+    );
+    const statusConfig = getStatusConfig(item.status);
+    const appointmentStatus = getAppointmentStatusConfig(
+      item.appointment_id?.status || "pending"
+    );
+
+    return (
+      <TouchableOpacity
+        style={styles.checklistCard}
+        activeOpacity={0.7}
+        onPress={() => {}}
+      >
+        {/* Header with category and date */}
+        <View style={styles.cardHeader}>
+          <View style={styles.categoryContainer}>
+            <View
+              style={[
+                styles.categoryIcon,
+                { backgroundColor: severityConfig.bg },
+              ]}
+            >
+              <Ionicons
+                name={getCategoryIcon(item.issue_type_id?.category) as any}
+                size={20}
+                color={severityConfig.color}
+              />
+            </View>
+            <View style={styles.categoryInfo}>
+              <Text style={styles.categoryName}>
+                {getCategoryLabel(item.issue_type_id?.category)}
+              </Text>
+              <View
+                style={[
+                  styles.severityBadge,
+                  { backgroundColor: severityConfig.bg },
+                ]}
+              >
+                <Text
+                  style={[styles.severityText, { color: severityConfig.color }]}
+                >
+                  {severityConfig.label}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+        </View>
+
+        {/* Appointment Info */}
+        <View style={styles.appointmentSection}>
+          <View style={styles.appointmentRow}>
+            <Ionicons name="calendar" size={16} color="#666" />
+            <Text style={styles.appointmentLabel}>Lịch hẹn:</Text>
+            <Text style={styles.appointmentDate}>
+              {formatAppointmentDate(item.appointment_id?.appoinment_date)}
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.appointmentStatusBadge,
+              { backgroundColor: appointmentStatus.color + "20" },
+            ]}
+          >
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: appointmentStatus.color },
+              ]}
+            />
+            <Text
+              style={[
+                styles.appointmentStatusText,
+                { color: appointmentStatus.color },
+              ]}
+            >
+              {appointmentStatus.label}
+            </Text>
+          </View>
+        </View>
+
+        {/* Issue Description */}
+        <View style={styles.descriptionSection}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="document-text-outline" size={16} color="#666" />
+            <Text style={styles.sectionTitle}>Mô tả vấn đề</Text>
+          </View>
+          <Text style={styles.descriptionText} numberOfLines={3}>
+            {item.issue_description}
+          </Text>
+        </View>
+        {/* Footer with status and action */}
+        <View style={styles.cardFooter}>
+          <View
+            style={[styles.statusChip, { backgroundColor: statusConfig.bg }]}
+          >
+            <Ionicons
+              name={statusConfig.icon as any}
+              size={14}
+              color={statusConfig.color}
+            />
+            <Text
+              style={[styles.statusChipText, { color: statusConfig.color }]}
+            >
+              {statusConfig.label}
+            </Text>
+          </View>
+
+          {item.status === "accepted" && (
+            <TouchableOpacity
+              style={styles.completeButton}
+              onPress={() => handleCompletePress(item)}
+            >
+              <Ionicons name="checkmark-done" size={16} color="white" />
+              <Text style={styles.completeButtonText}>Hoàn thành</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIconContainer}>
+        <Ionicons name="clipboard-outline" size={64} color="#E0E0E0" />
+      </View>
+      <Text style={styles.emptyTitle}>Chưa có checklist nào</Text>
+      <Text style={styles.emptyText}>
+        {filterStatus === "all"
+          ? "Nhấn nút + để tạo checklist mới"
+          : `Không có checklist với trạng thái "${
+              getStatusConfig(filterStatus).label
+            }"`}
+      </Text>
+    </View>
+  );
+
+  const renderFooter = () => {
+    if (!loading) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#4CAF50" />
+        <Text style={styles.footerLoaderText}>Đang tải thêm...</Text>
+      </View>
+    );
+  };
+
+  const renderFilterButton = (status: string, label: string, icon: string) => (
+    <TouchableOpacity
+      style={[
+        styles.filterButton,
+        filterStatus === status && styles.filterButtonActive,
+      ]}
+      onPress={() => setFilterStatus(status)}
+    >
+      <Ionicons
+        name={icon as any}
+        size={16}
+        color={filterStatus === status ? "#4CAF50" : "#999"}
+      />
+      <Text
+        style={[
+          styles.filterButtonText,
+          filterStatus === status && styles.filterButtonTextActive,
+        ]}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  if (userLoading || !user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+        <Text style={styles.loadingText}>Đang tải thông tin...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <Text style={styles.headerTitle}>Quản lý Checklist</Text>
         <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
+          style={styles.notificationButton}
+          onPress={() => {
+            // Navigate to notifications
+          }}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <Ionicons name="notifications-outline" size={24} color="#333" />
+          <View style={styles.notificationBadge}>
+            <Text style={styles.notificationBadgeText}>
+              {pagination?.total_items || 0}
+            </Text>
+          </View>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tạo Checklist</Text>
       </View>
 
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.content}>
-          {/* Issue Type Dropdown */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              <Ionicons name="warning" size={16} /> Loại sự cố *
-            </Text>
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-              containerStyle={styles.dropdownContainer}
-              data={issueTypeItems}
-              search
-              maxHeight={250}
-              labelField="label"
-              valueField="value"
-              placeholder={
-                issueTypesLoading ? "Đang tải..." : "Chọn loại sự cố"
-              }
-              searchPlaceholder="Tìm kiếm..."
-              value={issueTypeId}
-              onChange={(item) => setIssueTypeId(item.value)}
-            />
+      {/* Technician Info Card */}
+      <View style={styles.technicianCard}>
+        <View style={styles.technicianAvatar}>
+          <Ionicons name="person" size={28} color="#4CAF50" />
+        </View>
+        <View style={styles.technicianInfo}>
+          <Text style={styles.technicianName}>{user.fullName}</Text>
+          <Text style={styles.technicianRole}>Kỹ thuật viên</Text>
+        </View>
+        <View style={styles.statsBox}>
+          <Text style={styles.statsNumber}>{filteredChecklists.length}</Text>
+          <Text style={styles.statsLabel}>
+            {filterStatus === "all" ? "Tổng" : "Đang lọc"}
+          </Text>
+        </View>
+      </View>
+
+      {/* Filter Tabs */}
+      <View style={styles.filterContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View style={styles.filterTabs}>
+            {renderFilterButton("all", "Tất cả", "grid-outline")}
+            {renderFilterButton("pending", "Chờ xử lý", "time-outline")}
+            {renderFilterButton(
+              "accepted",
+              "Đã chấp nhận",
+              "checkmark-circle-outline"
+            )}
+            {renderFilterButton(
+              "completed",
+              "Hoàn thành",
+              "checkmark-done-outline"
+            )}
+            {renderFilterButton("canceled", "Đã hủy", "close-circle-outline")}
           </View>
+        </ScrollView>
+      </View>
 
-          {/* Issue Description */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              <Ionicons name="document-text" size={16} /> Mô tả sự cố *
-            </Text>
-            <TextInput
-              style={styles.textArea}
-              value={issueDescription}
-              onChangeText={setIssueDescription}
-              placeholder="Nhập mô tả chi tiết sự cố..."
-              multiline
-              numberOfLines={4}
-            />
-          </View>
+      {/* Checklist List */}
+      <FlatList
+        data={filteredChecklists}
+        renderItem={renderCheckListItem}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={["#4CAF50"]}
+            tintColor="#4CAF50"
+          />
+        }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListEmptyComponent={renderEmpty}
+        ListFooterComponent={renderFooter}
+        showsVerticalScrollIndicator={false}
+      />
 
-          {/* Solution Applied */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              <Ionicons name="checkmark-circle" size={16} /> Giải pháp áp dụng *
-            </Text>
-            <TextInput
-              style={styles.textArea}
-              value={solutionApplied}
-              onChangeText={setSolutionApplied}
-              placeholder="Nhập giải pháp đã áp dụng..."
-              multiline
-              numberOfLines={4}
-            />
-          </View>
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => router.push(`/technician/create?userId=${user._id}`)}
+      >
+        <Ionicons name="add" size={28} color="white" />
+      </TouchableOpacity>
 
-          {/* Parts Section */}
-          <View style={styles.partsSection}>
-            <Text style={styles.sectionTitle}>
-              <Ionicons name="construct" size={18} /> Phụ tùng sử dụng
-            </Text>
-
-            {/* Add Part Form */}
-            <View style={styles.addPartForm}>
-              <View style={styles.partDropdownContainer}>
-                <Dropdown
-                  style={styles.dropdown}
-                  placeholderStyle={styles.placeholderStyle}
-                  selectedTextStyle={styles.selectedTextStyle}
-                  containerStyle={styles.dropdownContainer}
-                  data={partItems}
-                  search
-                  maxHeight={250}
-                  labelField="label"
-                  valueField="value"
-                  placeholder={partsLoading ? "Đang tải..." : "Chọn phụ tùng"}
-                  searchPlaceholder="Tìm kiếm..."
-                  value={currentPartId}
-                  onChange={(item) => setCurrentPartId(item.value)}
-                />
+      {/* Complete Confirmation Modal */}
+      <Modal
+        visible={showCompleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowCompleteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <View style={styles.modalIcon}>
+                <Ionicons name="checkmark-circle" size={56} color="#4CAF50" />
               </View>
-
-              <View style={styles.quantityContainer}>
-                <TextInput
-                  style={styles.quantityInput}
-                  value={currentQuantity}
-                  onChangeText={setCurrentQuantity}
-                  placeholder="SL"
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <TouchableOpacity style={styles.addButton} onPress={addPart}>
-                <Ionicons name="add-circle" size={24} color="#4CAF50" />
-              </TouchableOpacity>
             </View>
 
-            {/* Selected Parts List */}
-            {selectedParts.length > 0 && (
-              <View style={styles.selectedPartsList}>
-                {selectedParts.map((item, index) => (
-                  <View key={index} style={styles.partItem}>
-                    <View style={styles.partInfo}>
-                      <Text style={styles.partName}>
-                        {getPartName(item.part_id)}
-                      </Text>
-                      <Text style={styles.partQuantity}>
-                        Số lượng: {item.quantity}
-                      </Text>
-                    </View>
-                    <TouchableOpacity onPress={() => removePart(item.part_id)}>
-                      <Ionicons name="trash" size={20} color="#F44336" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
+            <Text style={styles.modalTitle}>Xác nhận hoàn thành</Text>
+            <Text style={styles.modalMessage}>
+              Bạn có chắc chắn muốn đánh dấu checklist này là hoàn thành không?
+            </Text>
+
+            {selectedChecklist && (
+              <View style={styles.checklistPreview}>
+                <View style={styles.previewRow}>
+                  <Ionicons name="document-text" size={16} color="#666" />
+                  <Text style={styles.previewLabel}>Vấn đề:</Text>
+                </View>
+                <Text style={styles.previewValue} numberOfLines={2}>
+                  {selectedChecklist.issue_description}
+                </Text>
               </View>
             )}
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowCompleteModal(false);
+                  setSelectedChecklist(null);
+                }}
+                disabled={completing}
+              >
+                <Text style={styles.cancelButtonText}>Hủy</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleConfirmComplete}
+                disabled={completing}
+              >
+                {completing ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={18} color="#fff" />
+                    <Text style={styles.confirmButtonText}>Xác nhận</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </ScrollView>
-
-      {/* Submit Button */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={handleSubmit}
-          disabled={checklistLoading}
-        >
-          {checklistLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="checkmark-done" size={20} color="#fff" />
-              <Text style={styles.submitButtonText}>Tạo Checklist</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+      </Modal>
     </View>
   );
 };
 
-export default CreateCheckList;
+export default TechnicianCheckList;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#F8F9FA",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8F9FA",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#666",
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingVertical: 16,
     backgroundColor: "white",
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  backButton: {
-    marginRight: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#333",
+    color: "#212121",
   },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 10,
-  },
-  dropdown: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    height: 50,
-  },
-  dropdownContainer: {
-    borderRadius: 12,
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  placeholderStyle: {
-    fontSize: 15,
-    color: "#999",
-  },
-  selectedTextStyle: {
-    fontSize: 15,
-    color: "#333",
-  },
-  textArea: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#333",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    minHeight: 100,
-    textAlignVertical: "top",
-  },
-  partsSection: {
-    marginTop: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-    marginBottom: 15,
-  },
-  addPartForm: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 15,
-  },
-  partDropdownContainer: {
-    flex: 1,
-  },
-  quantityContainer: {
-    width: 70,
-  },
-  quantityInput: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: "#333",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
-    textAlign: "center",
-    height: 50,
-  },
-  addButton: {
+  notificationButton: {
+    position: "relative",
     padding: 8,
   },
-  selectedPartsList: {
-    gap: 10,
+  notificationBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    backgroundColor: "#F44336",
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
   },
-  partItem: {
+  notificationBadgeText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "white",
+  },
+  technicianCard: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "white",
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 16,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  technicianAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#E8F5E9",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  technicianInfo: {
+    flex: 1,
+  },
+  technicianName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#212121",
+    marginBottom: 4,
+  },
+  technicianRole: {
+    fontSize: 14,
+    color: "#757575",
+  },
+  statsBox: {
+    backgroundColor: "#E8F5E9",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 12,
-    padding: 15,
+    alignItems: "center",
+  },
+  statsNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#4CAF50",
+  },
+  statsLabel: {
+    fontSize: 12,
+    color: "#388E3C",
+    marginTop: 2,
+  },
+  filterContainer: {
+    backgroundColor: "white",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  filterTabs: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  filterButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#F5F5F5",
+    gap: 6,
+  },
+  filterButtonActive: {
+    backgroundColor: "#E8F5E9",
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: "#999",
+    fontWeight: "500",
+  },
+  filterButtonTextActive: {
+    color: "#4CAF50",
+    fontWeight: "600",
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  checklistCard: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    marginBottom: 12,
+    overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F5",
+  },
+  categoryContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  categoryIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  categoryInfo: {
+    flex: 1,
+  },
+  categoryName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#212121",
+    marginBottom: 4,
+  },
+  severityBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  severityText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  dateText: {
+    fontSize: 12,
+    color: "#999",
+  },
+  appointmentSection: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E0E0E0",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FAFAFA",
   },
-  partInfo: {
+  appointmentRow: {
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
-  partName: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  partQuantity: {
+  appointmentLabel: {
     fontSize: 13,
     color: "#666",
+    marginLeft: 6,
+    marginRight: 4,
   },
-  footer: {
+  appointmentDate: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#212121",
+  },
+  appointmentStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  appointmentStatusText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  descriptionSection: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F5",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 6,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#666",
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: "#212121",
+    lineHeight: 20,
+  },
+  solutionSection: {
+    padding: 16,
+    backgroundColor: "#F1F8F4",
+  },
+  solutionText: {
+    fontSize: 14,
+    color: "#212121",
+    lineHeight: 20,
+  },
+  partsSection: {
+    padding: 16,
+  },
+  partsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  partCard: {
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  partName: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#fff",
+    marginBottom: 2,
+  },
+  partQuantity: {
+    fontSize: 11,
+    color: "#fff",
+  },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#F5F5F5",
+  },
+  statusChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  statusChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  completeButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  completeButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "white",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 80,
+  },
+  emptyIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: "#F5F5F5",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#757575",
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "#BDBDBD",
+    textAlign: "center",
+    paddingHorizontal: 40,
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: "center",
+  },
+  footerLoaderText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#999",
+  },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#4CAF50",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
+  },
+  modalContent: {
     backgroundColor: "white",
-    elevation: 8,
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
+    maxWidth: 400,
+    elevation: 5,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
     shadowRadius: 4,
   },
-  submitButton: {
-    backgroundColor: "#4CAF50",
+  modalIconContainer: {
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#E8F5E9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#212121",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 15,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  checklistPreview: {
+    backgroundColor: "#F8F9FA",
+    padding: 16,
     borderRadius: 12,
-    paddingVertical: 16,
+    marginBottom: 24,
+  },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    gap: 6,
+  },
+  previewLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#666",
+  },
+  previewValue: {
+    fontSize: 14,
+    color: "#212121",
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 6,
   },
-  submitButtonText: {
-    fontSize: 16,
+  cancelButton: {
+    backgroundColor: "#F5F5F5",
+  },
+  cancelButtonText: {
+    color: "#666",
+    fontSize: 15,
     fontWeight: "600",
+  },
+  confirmButton: {
+    backgroundColor: "#4CAF50",
+  },
+  confirmButtonText: {
     color: "white",
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

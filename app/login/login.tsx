@@ -65,7 +65,7 @@ const Login = () => {
         router.push("/customerHome/customerHome");
         return;
       } else if (response.data.role === "technician") {
-        router.push("/technician");
+        router.push(`/technician`);
         return;
       }
       router.push("/customerHome/customerHome");

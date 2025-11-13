@@ -100,7 +100,11 @@ interface AppointmentState {
   appointments: Appointment[];
   currentAppointment: Appointment | null;
   myAppointments: Appointment[];
+  technicianAppointments: Appointment[];
   pagination: MyAppointmentsResponse["pagination"] | null;
+  technicianPagination:
+    | TechnicianAppointmentsResponse["data"]["pagination"]
+    | null;
   loading: boolean;
   error: string | null;
 }
@@ -109,7 +113,9 @@ const initialState: AppointmentState = {
   currentAppointment: null,
   appointments: [],
   myAppointments: [],
+  technicianAppointments: [],
   pagination: null,
+  technicianPagination: null,
   loading: false,
   error: null,
 };
@@ -118,7 +124,6 @@ export const createAppointment = createAsyncThunk(
   "appointment/createAppointment",
   async (appointmentData: CreateAppointmentRequest, { rejectWithValue }) => {
     try {
-      console.log("object");
       const response = await api.post("/appointment/create", appointmentData);
       console.log(response);
       return response.data;
@@ -156,7 +161,62 @@ export const getMyAppointments = createAsyncThunk<
     }
   }
 );
+interface GetAppointmentsByTechnicianRequest {
+  page: number;
+  limit: number;
+  status?: string;
+  technician_id: string;
+}
 
+// API Response interface for technician appointments
+interface TechnicianAppointmentsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    items: Appointment[];
+    pagination: {
+      current_page: number;
+      total_pages: number;
+      total_items: number;
+      items_per_page: number;
+      has_next_page: boolean;
+      has_prev_page: boolean;
+    };
+  };
+}
+export const getAppointmentsByTechnician = createAsyncThunk<
+  TechnicianAppointmentsResponse,
+  GetAppointmentsByTechnicianRequest
+>(
+  "appointment/getAppointmentsByTechnician",
+  async (params: GetAppointmentsByTechnicianRequest, { rejectWithValue }) => {
+    try {
+      const { page, limit, status, technician_id } = params;
+
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        technician_id: technician_id,
+      });
+      console.log(queryParams);
+      if (status) {
+        queryParams.append("status", status);
+      }
+      console.log(`/appointment/list?${queryParams.toString()}`);
+      const response = await api.get<TechnicianAppointmentsResponse>(
+        `/appointment/list?${queryParams.toString()}`
+      );
+      console.log(response.data);
+      return response.data;
+    } catch (error: any) {
+      console.log(error);
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to fetch technician appointments"
+      );
+    }
+  }
+);
 export const cancelAppointment = createAsyncThunk<Appointment, string>(
   "appointment/cancelAppointment",
   async (appointmentId: string, { rejectWithValue }) => {
@@ -241,6 +301,20 @@ const appointmentSlice = createSlice({
         state.currentAppointment = action.payload.data;
       })
       .addCase(getAppointmentById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(getAppointmentsByTechnician.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getAppointmentsByTechnician.fulfilled, (state, action) => {
+        state.loading = false;
+        console.log(action.payload);
+        state.technicianAppointments = action.payload.data.items;
+        state.technicianPagination = action.payload.data.pagination;
+      })
+      .addCase(getAppointmentsByTechnician.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

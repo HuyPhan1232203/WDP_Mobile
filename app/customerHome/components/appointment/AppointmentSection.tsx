@@ -26,6 +26,7 @@ export const AppointmentsSection: React.FC<AppointmentsSectionProps> = ({
   onAddAppointment,
   onViewAll,
 }) => {
+  console.log(appointments);
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>

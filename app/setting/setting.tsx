@@ -16,7 +16,7 @@ const Settings = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { user, loading, error } = useAppSelector((state) => state.user);
-
+  console.log(user);
   const handleLogout = async () => {
     try {
       await tokenStorage.removeToken();

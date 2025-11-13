@@ -5,6 +5,7 @@ import {
   getAppointmentById,
   getMyAppointments,
 } from "@/redux/feature/appointmentSlice";
+import { updatePaymentStatus } from "@/redux/feature/paymentSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -15,6 +16,7 @@ import {
   Linking,
   Modal,
   Platform,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,6 +26,7 @@ import {
 import QRCode from "react-native-qrcode-svg"; // Import QRCode
 import Toast from "react-native-toast-message";
 import { WebView } from "react-native-webview";
+import { getPaymentInfo } from "../utils/badge";
 const AppointmentDetail = () => {
   const router = useRouter();
   const dispatch = useAppDispatch();
@@ -121,7 +124,7 @@ const AppointmentDetail = () => {
     // Instead of Linking.openURL, show WebView modal
     setShowPaymentWebView(true);
   };
-  const handlePaymentNavigationStateChange = (navState: any) => {
+  const handlePaymentNavigationStateChange = async (navState: any) => {
     // Check if the URL indicates success or failure
     // Adjust the URLs based on your payment gateway's return URLs
     if (navState.url.includes("success") || navState.url.includes("return")) {
@@ -132,8 +135,16 @@ const AppointmentDetail = () => {
         text1: "Thành công",
         text2: "Thanh toán thành công",
       });
+      console.log(currentAppointment?.payment_id?.orderCode);
+      const res = await dispatch(
+        updatePaymentStatus({
+          order_code: currentAppointment?.payment_id?.orderCode ?? 0,
+          status: "paid",
+        })
+      );
+      console.log(res);
       // Refresh appointment data
-      dispatch(getAppointmentById(appointmentId));
+      await dispatch(getAppointmentById(appointmentId));
     } else if (
       navState.url.includes("cancel") ||
       navState.url.includes("failure")
@@ -247,9 +258,10 @@ const AppointmentDetail = () => {
 
   const statusInfo = getStatusInfo(currentAppointment.status);
   const canCancel =
-    currentAppointment.status === "pending" ||
-    currentAppointment.status === "confirmed" ||
-    currentAppointment.status === "accepted";
+    (currentAppointment.status === "pending" ||
+      currentAppointment.status === "confirmed" ||
+      currentAppointment.status === "accepted") &&
+    currentAppointment.payment_id?.status !== "TIMEOUT";
 
   return (
     <View style={styles.container}>
@@ -381,7 +393,7 @@ const AppointmentDetail = () => {
           <View style={styles.locationRow}>
             <Ionicons name="location" size={18} color="#666" />
             <Text style={styles.locationText}>
-              {currentAppointment.center_id.address}
+              {currentAppointment.center_id?.address}
             </Text>
           </View>
           <View style={styles.actionButtons}>
@@ -391,7 +403,7 @@ const AppointmentDetail = () => {
             >
               <Ionicons name="call" size={18} color="#4CAF50" />
               <Text style={styles.actionButtonText}>
-                {currentAppointment.center_id.phone}
+                {currentAppointment.center_id?.phone}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -455,21 +467,30 @@ const AppointmentDetail = () => {
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Trạng thái</Text>
-                <Text
-                  style={[
-                    styles.infoValue,
-                    {
-                      color:
-                        currentAppointment.payment_id.status === "PENDING"
-                          ? "#FF9800"
-                          : "#4CAF50",
-                    },
-                  ]}
-                >
-                  {currentAppointment.payment_id.status === "PENDING"
-                    ? "Chờ thanh toán"
-                    : "Đã thanh toán"}
-                </Text>
+
+                {currentAppointment.payment_id && (
+                  <View style={styles.paymentBadge}>
+                    {(() => {
+                      const info = getPaymentInfo(
+                        currentAppointment.payment_id.status
+                      );
+                      return (
+                        <>
+                          <Ionicons
+                            name={info.icon as any}
+                            size={12}
+                            color={info.color}
+                          />
+                          <Text
+                            style={[styles.paymentText, { color: info.color }]}
+                          >
+                            {info.label}
+                          </Text>
+                        </>
+                      );
+                    })()}
+                  </View>
+                )}
               </View>
 
               {currentAppointment.payment_id.status === "PENDING" && (
@@ -562,7 +583,7 @@ const AppointmentDetail = () => {
         animationType="slide"
         onRequestClose={() => setShowPaymentWebView(false)}
       >
-        <View style={styles.webViewContainer}>
+        <SafeAreaView style={styles.webViewContainer}>
           <View style={styles.webViewHeader}>
             <TouchableOpacity
               style={styles.closeWebViewButton}
@@ -577,7 +598,7 @@ const AppointmentDetail = () => {
             onNavigationStateChange={handlePaymentNavigationStateChange}
             style={styles.webView}
           />
-        </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Cancel Confirmation Modal */}
@@ -678,6 +699,17 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#333",
     marginLeft: 10,
+  },
+  paymentBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+  },
+  paymentText: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginLeft: 5,
   },
   webView: {
     flex: 1,

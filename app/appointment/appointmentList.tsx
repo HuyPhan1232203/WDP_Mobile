@@ -97,15 +97,52 @@ const formatCurrency = (amount: number) => {
 const getStatusInfo = (status: string) => {
   const statusMap: { [key: string]: { label: string; color: string } } = {
     pending: { label: "Chờ xác nhận", color: "#FF9800" },
-    accept: { label: "Đã chấp nhận", color: "#2196F3" },
-    deposited: { label: "Đã đặt cọc", color: "#9C27B0" },
+    assigned: { label: "Đã phân công", color: "#2196F3" },
+    check_in: { label: "Đã check-in", color: "#9C27B0" },
+    in_progress: { label: "Đang thực hiện", color: "#FF9800" },
+    repaired: { label: "Đã sửa chữa", color: "#4CAF50" },
     completed: { label: "Hoàn thành", color: "#4CAF50" },
-    paid: { label: "Đã thanh toán", color: "#4CAF50" },
     canceled: { label: "Đã hủy", color: "#F44336" },
   };
   return statusMap[status] || { label: status, color: "#666" };
 };
-
+const getPaymentInfo = (status?: string) => {
+  const s = (status || "").toLowerCase();
+  const map: { [key: string]: { label: string; color: string; icon: any } } = {
+    pending: {
+      label: "Chờ thanh toán",
+      color: "#FF9800",
+      icon: "time-outline",
+    },
+    paid: {
+      label: "Đã thanh toán",
+      color: "#4CAF50",
+      icon: "checkmark-circle",
+    },
+    cancelled: {
+      label: "Đã hủy thanh toán",
+      color: "#F44336",
+      icon: "close-circle",
+    },
+    failed: {
+      label: "Thanh toán thất bại",
+      color: "#D32F2F",
+      icon: "alert-circle",
+    },
+    timeout: {
+      label: "Quá hạn thanh toán",
+      color: "#D32F2F",
+      icon: "alert-circle",
+    },
+  };
+  return (
+    map[s] || {
+      label: status || "Không xác định",
+      color: "#999",
+      icon: "help-circle",
+    }
+  );
+};
 const AppointmentList = () => {
   const router = useRouter();
   const [filters, setFilters] = useState<FilterState>({});
@@ -139,10 +176,11 @@ const AppointmentList = () => {
   const statusFilters = [
     { label: "Tất cả", value: undefined },
     { label: "Chờ xác nhận", value: "pending" },
-    { label: "Đã chấp nhận", value: "accept" },
-    { label: "Đã đặt cọc", value: "deposited" },
+    { label: "Đã phân công", value: "assigned" },
+    { label: "Đã check-in", value: "check_in" },
+    { label: "Đang thực hiện", value: "in_progress" },
+    { label: "Đã sửa chữa", value: "repaired" },
     { label: "Hoàn thành", value: "completed" },
-    { label: "Đã thanh toán", value: "paid" },
     { label: "Đã hủy", value: "canceled" },
   ];
 
@@ -248,7 +286,7 @@ const AppointmentList = () => {
         <View style={styles.infoRow}>
           <Ionicons name="business-outline" size={14} color="#666" />
           <Text style={styles.infoText} numberOfLines={1}>
-            {item.center_id.address}
+            {item.center_id?.address}
           </Text>
         </View>
 
@@ -266,32 +304,21 @@ const AppointmentList = () => {
 
         {item.payment_id && (
           <View style={styles.paymentBadge}>
-            <Ionicons
-              name={
-                item.payment_id.status === "PENDING"
-                  ? "time-outline"
-                  : "checkmark-circle"
-              }
-              size={12}
-              color={
-                item.payment_id.status === "PENDING" ? "#FF9800" : "#4CAF50"
-              }
-            />
-            <Text
-              style={[
-                styles.paymentText,
-                {
-                  color:
-                    item.payment_id.status === "PENDING"
-                      ? "#FF9800"
-                      : "#4CAF50",
-                },
-              ]}
-            >
-              {item.payment_id.status === "PENDING"
-                ? "Chờ thanh toán"
-                : "Đã thanh toán"}
-            </Text>
+            {(() => {
+              const info = getPaymentInfo(item.payment_id.status);
+              return (
+                <>
+                  <Ionicons
+                    name={info.icon as any}
+                    size={12}
+                    color={info.color}
+                  />
+                  <Text style={[styles.paymentText, { color: info.color }]}>
+                    {info.label}
+                  </Text>
+                </>
+              );
+            })()}
           </View>
         )}
       </TouchableOpacity>

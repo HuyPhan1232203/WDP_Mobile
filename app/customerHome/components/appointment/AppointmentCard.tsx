@@ -1,4 +1,5 @@
 // components/home/AppointmentCard.tsx
+import { getPaymentInfo } from "@/app/utils/badge";
 import { Appointment } from "@/redux/feature/appointmentSlice";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
@@ -87,7 +88,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
         <View style={styles.appointmentRow}>
           <Ionicons name="location-outline" size={14} color="#666" />
           <Text style={styles.appointmentText} numberOfLines={1}>
-            {appointment.center_id.address}
+            {appointment.center_id?.address}
           </Text>
         </View>
         <View style={styles.appointmentRow}>
@@ -101,31 +102,21 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
       {/* Payment status */}
       {appointment.payment_id && (
         <View style={styles.paymentInfo}>
-          <Ionicons
-            name="card-outline"
-            size={14}
-            color={
-              appointment.payment_id.status === "pending"
-                ? "#FF9800"
-                : "#4CAF50"
-            }
-          />
-          <Text
-            style={[
-              styles.paymentText,
-              {
-                color:
-                  appointment.payment_id.status === "pending"
-                    ? "#FF9800"
-                    : "#4CAF50",
-              },
-            ]}
-          >
-            Thanh toán:{" "}
-            {appointment.payment_id.status === "pending"
-              ? "Chờ thanh toán"
-              : "Đã thanh toán"}
-          </Text>
+          {(() => {
+            const info = getPaymentInfo(appointment.payment_id.status);
+            return (
+              <>
+                <Ionicons
+                  name={info.icon as any}
+                  size={12}
+                  color={info.color}
+                />
+                <Text style={[styles.paymentText, { color: info.color }]}>
+                  {info.label}
+                </Text>
+              </>
+            );
+          })()}
         </View>
       )}
 
