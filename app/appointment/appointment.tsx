@@ -36,9 +36,6 @@ const AppointmentDetail = () => {
   const { currentAppointment, loading, error } = useAppSelector(
     (state) => state.appointment
   );
-  useEffect(() => {
-    console.log(currentAppointment);
-  }, [currentAppointment]);
   const [showPaymentWebView, setShowPaymentWebView] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -47,7 +44,6 @@ const AppointmentDetail = () => {
     if (appointmentId) {
       dispatch(getAppointmentById(appointmentId));
     }
-
     return () => {
       dispatch(clearCurrentAppointment());
     };
@@ -129,21 +125,20 @@ const AppointmentDetail = () => {
     // Adjust the URLs based on your payment gateway's return URLs
     if (navState.url.includes("success") || navState.url.includes("return")) {
       // Payment successful
-      setShowPaymentWebView(false);
-      Toast.show({
-        type: "success",
-        text1: "Thành công",
-        text2: "Thanh toán thành công",
-      });
-      console.log(currentAppointment?.payment_id?.orderCode);
       const res = await dispatch(
         updatePaymentStatus({
           order_code: currentAppointment?.payment_id?.orderCode ?? 0,
           status: "paid",
         })
       );
+      setShowPaymentWebView(false);
+      Toast.show({
+        type: "success",
+        text1: "Thành công",
+        text2: "Thanh toán thành công",
+      });
+     
       console.log(res);
-      // Refresh appointment data
       await dispatch(getAppointmentById(appointmentId));
     } else if (
       navState.url.includes("cancel") ||
@@ -269,7 +264,7 @@ const AppointmentDetail = () => {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerButton}
-          onPress={() => router.back()}
+          onPress={() => router.push("/customerHome/customerHome")}
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
@@ -337,11 +332,27 @@ const AppointmentDetail = () => {
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Chi phí dự kiến</Text>
+            <Text style={styles.infoLabel}>Chi phí dịch vụ</Text>
             <Text style={[styles.infoValue, styles.priceText]}>
-              {formatCurrency(currentAppointment.estimated_cost)}
+              {formatCurrency(currentAppointment.service_type_id.base_price)}
             </Text>
           </View>
+          {currentAppointment.deposit_cost > 0 && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Đặt cọc</Text>
+              <Text style={[styles.infoValue, styles.priceText]}>
+                {formatCurrency(currentAppointment.deposit_cost)}
+              </Text>
+            </View>
+          )}
+          {currentAppointment.final_cost > 0 && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Tổng chi phí</Text>
+              <Text style={[styles.infoValue, styles.priceText]}>
+                {formatCurrency(currentAppointment.final_cost)}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Vehicle Info */}

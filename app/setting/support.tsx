@@ -2,14 +2,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
-  Alert,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Linking,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Toast from "react-native-toast-message";
 
@@ -41,7 +41,7 @@ const Support = () => {
     {
       id: 4,
       title: "Quản lý xe",
-      icon: "car-outline",
+      icon: "flash-sharp",
       description: "Thêm, sửa, xóa thông tin xe",
     },
     {

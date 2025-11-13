@@ -36,7 +36,7 @@ const Register = () => {
       Toast.show({
         type: "error",
         text1: "Lỗi",
-        text2: "Username phải có ít nhất 4 ký tự",
+        text2: "Tên đăng nhập phải có ít nhất 4 ký tự",
       });
       return false;
     }
@@ -45,7 +45,7 @@ const Register = () => {
       Toast.show({
         type: "error",
         text1: "Lỗi",
-        text2: "Username chỉ chứa chữ cái và số",
+        text2: "Tên đăng nhập chỉ chứa chữ cái và số",
       });
       return false;
     }
@@ -178,18 +178,18 @@ const Register = () => {
             <Text style={styles.backButtonText}>Trang chủ</Text>
           </TouchableOpacity>
           <View style={styles.registerCard}>
-            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.title}>Tạo Tài Khoản</Text>
             <Text style={styles.subtitle}>
-              Join us for professional EV care services
+              Tham gia cùng chúng tôi để nhận dịch vụ chăm sóc xe điện chuyên nghiệp
             </Text>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Username</Text>
+              <Text style={styles.inputLabel}>Tên đăng nhập</Text>
               <TextInput
                 style={styles.input}
                 value={username}
                 onChangeText={setUsername}
-                placeholder="Nhập username"
+                placeholder="Nhập tên đăng nhập"
                 autoCapitalize="none"
               />
             </View>

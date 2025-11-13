@@ -2,11 +2,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 const Guide = () => {
@@ -37,7 +37,7 @@ const Guide = () => {
     {
       id: 3,
       title: "Quản lý xe",
-      icon: "car-outline",
+      icon: "flash-sharp",
       steps: [
         "Vào mục 'Xe của tôi'",
         "Thêm thông tin xe bằng cách nhập biển số",

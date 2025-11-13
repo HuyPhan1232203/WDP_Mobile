@@ -80,7 +80,7 @@ export const AppointmentCard: React.FC<AppointmentCardProps> = ({
           </Text>
         </View>
         <View style={styles.appointmentRow}>
-          <Ionicons name="car-outline" size={14} color="#666" />
+          <Ionicons name="flash-sharp" size={14} color="#666" />
           <Text style={styles.appointmentText}>
             {appointment.vehicle_id.license_plate}
           </Text>

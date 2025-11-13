@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import {
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,7 +19,7 @@ const TechnicianChecklistDetail = () => {
   const dispatch = useDispatch();
   const { item } = useLocalSearchParams();
   const checklist = JSON.parse(item as string);
-  const { completing, success } = useSelector((state: any) => state.checklist);
+  const { completing } = useSelector((state: any) => state.checklist);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -104,12 +105,18 @@ const TechnicianChecklistDetail = () => {
         {
           text: "Hoàn thành",
           onPress: async () => {
-            const res = await dispatch(completeCheckList(checklist._id));
-            if (completeCheckList.fulfilled.match(res)) {
+            try {
+              (dispatch as any)(completeCheckList(checklist._id));
               router.back();
               Toast.show({
                 type: "success",
                 text1: "Hoàn thành checklist thành công",
+              });
+            } catch (error) {
+              Toast.show({
+                type: "error",
+                text1: "Lỗi khi hoàn thành checklist",
+                text2: (error as Error).message || "Vui lòng thử lại",
               });
             }
           },
@@ -342,14 +349,28 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   backButton: {
     padding: 8,
+    borderRadius: 8,
+    backgroundColor: "#F5F5F5",
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#212121",
+    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : undefined,
   },
   scrollView: {
     flex: 1,
@@ -357,109 +378,161 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: "#212121",
-    marginBottom: 12,
+    marginBottom: 16,
+    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : undefined,
   },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 12,
+    paddingVertical: 4,
   },
   label: {
     fontSize: 14,
     color: "#666",
     fontWeight: "500",
+    fontFamily: Platform.OS === "android" ? "sans-serif" : undefined,
+    flex: 1,
   },
   value: {
     fontSize: 14,
     color: "#212121",
-    flex: 1,
+    fontFamily: Platform.OS === "android" ? "sans-serif" : undefined,
+    flex: 2,
     textAlign: "right",
+    paddingLeft: 8,
   },
   statusBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
   statusText: {
     fontSize: 12,
     fontWeight: "600",
+    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : undefined,
   },
   severityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   severityText: {
     fontSize: 11,
     fontWeight: "600",
+    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : undefined,
   },
   descriptionText: {
     fontSize: 14,
     color: "#212121",
-    lineHeight: 20,
+    lineHeight: 22,
+    fontFamily: Platform.OS === "android" ? "sans-serif" : undefined,
   },
   partItem: {
-    backgroundColor: "#F5F5F5",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
+    backgroundColor: "#F8F9FA",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
   },
   partName: {
     fontSize: 16,
     fontWeight: "bold",
     color: "#212121",
-    marginBottom: 4,
+    marginBottom: 6,
+    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : undefined,
   },
   partDetail: {
     fontSize: 14,
     color: "#666",
+    fontFamily: Platform.OS === "android" ? "sans-serif" : undefined,
   },
   costText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
     color: "#4CAF50",
+    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : undefined,
   },
   appointmentStatusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   appointmentStatusText: {
     fontSize: 12,
     fontWeight: "600",
+    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : undefined,
   },
   footer: {
-    padding: 16,
+    padding: 20,
     backgroundColor: "white",
     borderTopWidth: 1,
     borderTopColor: "#F0F0F0",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   completeButton: {
     backgroundColor: "#4CAF50",
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowColor: "#4CAF50",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
   disabledButton: {
     backgroundColor: "#A5D6A7",
+    ...Platform.select({
+      ios: {
+        shadowOpacity: 0.1,
+      },
+      android: {
+        elevation: 0,
+      },
+    }),
   },
   completeButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "bold",
+    fontFamily: Platform.OS === "android" ? "sans-serif-medium" : undefined,
   },
 });

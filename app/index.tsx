@@ -23,7 +23,7 @@ export default function HomeScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Ionicons name="car-outline" size={24} color="#4CAF50" />
+              <Ionicons name="flash-sharp" size={24} color="#4CAF50" />
               <View>
                 <Text style={styles.brandName}>EV Service</Text>
                 <Text style={styles.brandSubtitle}>Management System</Text>

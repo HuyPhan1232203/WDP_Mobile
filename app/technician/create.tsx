@@ -1,5 +1,5 @@
 import { getAppointmentsByTechnician } from "@/redux/feature/appointmentSlice";
-import { createCheckList } from "@/redux/feature/checkListSlice";
+import { createCheckList, getCheckLists } from "@/redux/feature/checkListSlice";
 import { fetchAllIssueTypes } from "@/redux/feature/issueTypeSlice";
 import { fetchAllParts } from "@/redux/feature/partSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -52,10 +52,7 @@ const CreateCheckList = () => {
   useEffect(() => {
     dispatch(fetchAllParts());
     dispatch(fetchAllIssueTypes());
-    // Fetch appointments for technician
-    console.log(userId);
     if (userId) {
-      console.log("object");
       dispatch(
         getAppointmentsByTechnician({
           page: 1,
@@ -73,9 +70,8 @@ const CreateCheckList = () => {
     ).toLocaleDateString("vi-VN")}`,
     value: appointment._id,
   }));
-
-  const partItems = parts.map((part) => ({
-    label: `${part.part_name} - ${part.part_number}`,
+ const partItems = parts.map((part) => ({
+    label: `${part?.part_name} - ${part?.part_number} (${part?.sellPrice} VND)`,
     value: part._id,
   }));
 
@@ -147,9 +143,8 @@ const CreateCheckList = () => {
     };
 
     try {
-      console.log(JSON.stringify(checklistData));
       const res = await dispatch(createCheckList(checklistData)).unwrap();
-      console.log(res);
+    await dispatch(getCheckLists({ page: 1, limit: 10 }));
       Toast.show({
         type: "success",
         text1: "Tạo checklist thành công!",
@@ -166,8 +161,9 @@ const CreateCheckList = () => {
 
   const getPartName = (partId: string) => {
     const part = parts.find((p) => p._id === partId);
-    return part ? `${part.part_name} - ${part.part_number}` : "";
+    return part ? `${part.part_name} - ${part.part_number} (${part.sellPrice} VND)` : "";
   };
+
 
   return (
     <View style={styles.container}>
@@ -207,7 +203,68 @@ const CreateCheckList = () => {
               onChange={(item) => setAppointmentId(item.value)}
             />
           </View>
+<View style={styles.partsSection}>
+            <Text style={styles.sectionTitle}>
+              <Ionicons name="construct" size={18} /> Phụ tùng sử dụng
+            </Text>
 
+            <View style={styles.addPartForm}>
+              <View style={styles.partDropdownContainer}>
+                <Dropdown
+                  style={styles.dropdown}
+                  placeholderStyle={styles.placeholderStyle}
+                  selectedTextStyle={styles.selectedTextStyle}
+                  containerStyle={styles.dropdownContainer}
+                  data={partItems}
+                  search
+                  maxHeight={250}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={partsLoading ? "Đang tải..." : "Chọn phụ tùng"}
+                  searchPlaceholder="Tìm kiếm..."
+                  value={currentPartId}
+                  onChange={(item) => setCurrentPartId(item.value)}
+                />
+              </View>
+
+              <View style={styles.quantityContainer}>
+                <TextInput
+                  style={styles.quantityInput}
+                  value={currentQuantity}
+                  onChangeText={setCurrentQuantity}
+                  placeholder="SL"
+                  keyboardType="numeric"
+                />
+              </View>
+
+              <TouchableOpacity style={styles.addButton} onPress={addPart}>
+                <Ionicons name="add-circle" size={24} color="#4CAF50" />
+              </TouchableOpacity>
+            </View>
+
+             {selectedParts.length > 0 && (
+              <View style={styles.selectedPartsList}>
+                {selectedParts.map((item, index) => (
+                  <View key={index} style={styles.partItem}>
+                    <View style={styles.partInfo}>
+                      <Text style={styles.partName}>
+                        {getPartName(item.part_id)}
+                      </Text>
+                      <Text style={styles.partQuantity}>
+                        Số lượng: {item.quantity}
+                      </Text>
+                      <Text style={styles.partPrice}>
+                        Giá: {parts.find(p => p._id === item.part_id)?.sellPrice} VND
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => removePart(item.part_id)}>
+                      <Ionicons name="trash" size={20} color="#F44336" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
           {/* Issue Type */}
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>
@@ -263,65 +320,7 @@ const CreateCheckList = () => {
           </View>
 
           {/* Parts Section */}
-          <View style={styles.partsSection}>
-            <Text style={styles.sectionTitle}>
-              <Ionicons name="construct" size={18} /> Phụ tùng sử dụng
-            </Text>
-
-            <View style={styles.addPartForm}>
-              <View style={styles.partDropdownContainer}>
-                <Dropdown
-                  style={styles.dropdown}
-                  placeholderStyle={styles.placeholderStyle}
-                  selectedTextStyle={styles.selectedTextStyle}
-                  containerStyle={styles.dropdownContainer}
-                  data={partItems}
-                  search
-                  maxHeight={250}
-                  labelField="label"
-                  valueField="value"
-                  placeholder={partsLoading ? "Đang tải..." : "Chọn phụ tùng"}
-                  searchPlaceholder="Tìm kiếm..."
-                  value={currentPartId}
-                  onChange={(item) => setCurrentPartId(item.value)}
-                />
-              </View>
-
-              <View style={styles.quantityContainer}>
-                <TextInput
-                  style={styles.quantityInput}
-                  value={currentQuantity}
-                  onChangeText={setCurrentQuantity}
-                  placeholder="SL"
-                  keyboardType="numeric"
-                />
-              </View>
-
-              <TouchableOpacity style={styles.addButton} onPress={addPart}>
-                <Ionicons name="add-circle" size={24} color="#4CAF50" />
-              </TouchableOpacity>
-            </View>
-
-            {selectedParts.length > 0 && (
-              <View style={styles.selectedPartsList}>
-                {selectedParts.map((item, index) => (
-                  <View key={index} style={styles.partItem}>
-                    <View style={styles.partInfo}>
-                      <Text style={styles.partName}>
-                        {getPartName(item.part_id)}
-                      </Text>
-                      <Text style={styles.partQuantity}>
-                        Số lượng: {item.quantity}
-                      </Text>
-                    </View>
-                    <TouchableOpacity onPress={() => removePart(item.part_id)}>
-                      <Ionicons name="trash" size={20} color="#F44336" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
+          
         </View>
       </ScrollView>
 
@@ -407,6 +406,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E0E0E0",
     height: 50,
+  },
+  partPrice: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 2,
   },
   dropdownContainer: {
     borderRadius: 12,

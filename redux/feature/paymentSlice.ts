@@ -3,7 +3,7 @@ import api from "../../config/axios";
 
 interface UpdatePaymentStatusRequest {
   order_code: number;
-  status: "paid" | "pending" | "failed" | "cancelled";
+  status: "paid"
 }
 
 interface UpdatePaymentStatusResponse {
@@ -36,10 +36,11 @@ export const updatePaymentStatus = createAsyncThunk(
   "payment/updatePaymentStatus",
   async (paymentData: UpdatePaymentStatusRequest, { rejectWithValue }) => {
     try {
-      const response = await api.patch<UpdatePaymentStatusResponse>(
+      const response = await api.put<UpdatePaymentStatusResponse>(
         "/payment/update-status",
         paymentData
       );
+      console.log(response)
       return response.data;
     } catch (error: any) {
       return rejectWithValue(

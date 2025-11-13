@@ -14,7 +14,13 @@ export const Header: React.FC<HeaderProps> = ({ title, onSettingsPress }) => {
 
   return (
     <View style={styles.header}>
-      <TouchableOpacity>
+      <TouchableOpacity style={{ flexDirection: "row", alignItems: "center" }}>
+        <Ionicons
+          name="flash-sharp"
+          size={24}
+          color="#333"
+          style={styles.icon}
+        />
         <Text style={styles.headerTitle}>{title}</Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -40,6 +46,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  icon: {
+    marginRight: 10,
   },
   headerTitle: {
     fontSize: 20,

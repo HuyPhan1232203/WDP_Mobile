@@ -222,7 +222,7 @@ const Login = () => {
 
           <View style={styles.logoContainer}>
             <View style={styles.logo}>
-              <Ionicons name="car-outline" size={32} color="#4CAF50" />
+              <Ionicons name="flash-sharp" size={32} color="#4CAF50" />
             </View>
           </View>
 

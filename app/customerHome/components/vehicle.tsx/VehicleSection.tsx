@@ -21,7 +21,7 @@ export const VehiclesSection: React.FC<VehiclesSectionProps> = ({
   return (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="car-outline" size={20} color="#333" />
+        <Ionicons name="flash-sharp" size={20} color="#333" />
         <Text style={styles.sectionTitle}>Xe của bạn ({vehicles.length})</Text>
       </View>
       <Text style={styles.sectionSubtitle}>
@@ -47,7 +47,7 @@ export const VehiclesSection: React.FC<VehiclesSectionProps> = ({
         </View>
       ) : (
         <View style={styles.emptyState}>
-          <Ionicons name="car-outline" size={48} color="#ccc" />
+          <Ionicons name="flash-sharp" size={48} color="#ccc" />
           <Text style={styles.emptyStateText}>Chưa có xe nào được đăng ký</Text>
           <TouchableOpacity
             style={styles.emptyStateButton}

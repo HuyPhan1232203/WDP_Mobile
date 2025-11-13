@@ -66,7 +66,8 @@ interface Appointment {
   appoinment_time: string;
   status: string;
   notes: string;
-  estimated_cost: number;
+  final_cost: number;
+  deposit_cost: number;
   user_id: User;
   vehicle_id: Vehicle;
   center_id: Center;

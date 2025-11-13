@@ -30,10 +30,11 @@ interface Part {
   part_name: string;
   description: string;
   cost_price: number;
+  sellPrice: number;
   unit_price: number;
   supplier: string;
   warranty_month: number;
-  stock_quantity?: number; // Nếu API có trả về
+  stock_quantity?: number;
   createdAt: string;
   updatedAt: string;
   __v: number;

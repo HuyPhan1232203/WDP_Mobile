@@ -85,7 +85,7 @@ const CustomerHome = () => {
 
   return (
     <View style={styles.container}>
-      <Header title="Trang chủ" />
+      <Header title="EV Vehicle" />
 
       <ScrollView style={styles.content}>
         <ActionButtons

@@ -30,6 +30,19 @@ export const fetchAllModels = createAsyncThunk(
   }
 );
 
+export const deleteVehicle = createAsyncThunk(
+  "vehicle/deleteVehicle",
+  async (vehicleId: string, { rejectWithValue }) => {
+    try {
+      await api.delete(`/vehicle/delete/${vehicleId}`);
+      return vehicleId;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to delete vehicle"
+      );
+    }
+  }
+);
 export const fetchUserVehicles = createAsyncThunk(
   "vehicle/fetchUserVehicles",
   async (_, { rejectWithValue }) => {
@@ -96,7 +109,7 @@ const vehicleSlice = createSlice({
       state.error = null;
     },
   },
-  extraReducers: (builder) => {
+ extraReducers: (builder) => {
     builder
       .addCase(createVehicle.pending, (state) => {
         state.loading = true;
@@ -131,6 +144,37 @@ const vehicleSlice = createSlice({
         state.vehicles = action.payload;
       })
       .addCase(fetchUserVehicles.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(updateVehicle.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateVehicle.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.vehicles.findIndex(
+          (vehicle) => vehicle._id === action.payload._id
+        );
+        if (index !== -1) {
+          state.vehicles[index] = action.payload;
+        }
+      })
+      .addCase(updateVehicle.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(deleteVehicle.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteVehicle.fulfilled, (state, action) => {
+        state.loading = false;
+        state.vehicles = state.vehicles.filter(
+          (vehicle) => vehicle._id !== action.payload
+        );
+      })
+      .addCase(deleteVehicle.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

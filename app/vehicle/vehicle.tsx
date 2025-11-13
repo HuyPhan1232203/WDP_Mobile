@@ -1,4 +1,5 @@
 import {
+  deleteVehicle,
   fetchAllModels,
   fetchUserVehicles,
   updateVehicle,
@@ -8,6 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -42,7 +44,11 @@ const VehicleEdit = () => {
   const [lastServiceMileage, setLastServiceMileage] = useState(
     vehicle.last_service_mileage?.toString() || ""
   );
-  const [purchaseDate, setPurchaseDate] = useState(vehicle.purchase_date || "");
+  const [purchaseDate, setPurchaseDate] = useState(
+    vehicle.purchase_date
+      ? new Date(vehicle.purchase_date).toISOString().split("T")[0]
+      : ""
+  );
 
   const colors = [
     { label: "Trắng", value: "white" },
@@ -97,6 +103,38 @@ const VehicleEdit = () => {
         text2: "Không thể cập nhật xe",
       });
     }
+  };
+
+  const handleDelete = async () => {
+    Alert.alert(
+      "Xác nhận xóa",
+      "Bạn có chắc muốn xóa xe này? Hành động này không thể hoàn tác.",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Xóa",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await dispatch(deleteVehicle(vehicle._id)).unwrap();
+              Toast.show({
+                type: "success",
+                text1: "Thành công",
+                text2: "Xe đã được xóa",
+              });
+              dispatch(fetchUserVehicles());
+              router.back();
+            } catch (error) {
+              Toast.show({
+                type: "error",
+                text1: "Lỗi",
+                text2: "Không thể xóa xe",
+              });
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -202,6 +240,10 @@ const VehicleEdit = () => {
           <Text style={{ color: "red", marginBottom: 10 }}>{error}</Text>
         )}
 
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <Text style={styles.deleteButtonText}>Xóa xe</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.updateButton} onPress={handleSubmit}>
           <Text style={styles.updateButtonText}>Cập nhật xe</Text>
         </TouchableOpacity>
@@ -296,6 +338,18 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   updateButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  deleteButton: {
+    backgroundColor: "#F44336",
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  deleteButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",
