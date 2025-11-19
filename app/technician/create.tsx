@@ -1,5 +1,5 @@
 import { getAppointmentsByTechnician } from "@/redux/feature/appointmentSlice";
-import { createCheckList, getCheckLists } from "@/redux/feature/checkListSlice";
+import { createCheckIn, createCheckList, getCheckLists } from "@/redux/feature/checkListSlice"; // Added createCheckIn
 import { fetchAllIssueTypes } from "@/redux/feature/issueTypeSlice";
 import { fetchAllParts } from "@/redux/feature/partSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
@@ -41,7 +41,10 @@ const CreateCheckList = () => {
     (state) => state.checklist
   );
 
+  // Added states for steps and check-in
+  const [currentStep, setCurrentStep] = useState(1); // 1: Check-in, 2: Create Checklist
   const [appointmentId, setAppointmentId] = useState("");
+  const [initialVehicleCondition, setInitialVehicleCondition] = useState(""); // For Step 1
   const [issueTypeId, setIssueTypeId] = useState("");
   const [issueDescription, setIssueDescription] = useState("");
   const [solutionApplied, setSolutionApplied] = useState("");
@@ -70,7 +73,7 @@ const CreateCheckList = () => {
     ).toLocaleDateString("vi-VN")}`,
     value: appointment._id,
   }));
- const partItems = parts.map((part) => ({
+  const partItems = parts.map((part) => ({
     label: `${part?.part_name} - ${part?.part_number} (${part?.sellPrice} VND)`,
     value: part._id,
   }));
@@ -80,6 +83,73 @@ const CreateCheckList = () => {
     value: issueType._id,
   }));
 
+  // Step indicator (reused from service.tsx logic)
+  const renderStepIndicator = () => (
+    <View style={styles.stepIndicator}>
+      {[1, 2].map((step) => (
+        <View key={step} style={styles.stepItem}>
+          <View
+            style={[
+              styles.stepCircle,
+              currentStep >= step && styles.stepCircleActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.stepNumber,
+                currentStep >= step && styles.stepNumberActive,
+              ]}
+            >
+              {step}
+            </Text>
+          </View>
+          {step < 2 && (
+            <View
+              style={[
+                styles.stepLine,
+                currentStep > step && styles.stepLineActive,
+              ]}
+            />
+          )}
+        </View>
+      ))}
+    </View>
+  );
+
+  // Handler for Step 1: Check-in
+  const handleCheckIn = async () => {
+    if (!appointmentId || !initialVehicleCondition.trim()) {
+      Toast.show({
+        type: "error",
+        text1: "Vui lòng điền đầy đủ thông tin",
+        text2: "Chọn lịch hẹn và nhập tình trạng xe ban đầu",
+      });
+      return;
+    }
+
+    try {
+      await dispatch(
+        createCheckIn({
+          appointment_id: appointmentId,
+          initial_vehicle_condition: initialVehicleCondition,
+        })
+      ).unwrap();
+      Toast.show({
+        type: "success",
+        text1: "Check-in thành công!",
+        text2: "Tiếp tục tạo checklist",
+      });
+      setCurrentStep(2); // Proceed to Step 2
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Lỗi check-in",
+        text2: "Vui lòng thử lại",
+      });
+    }
+  };
+
+  // Existing addPart and removePart functions (unchanged)
   const addPart = () => {
     if (!currentPartId) {
       Toast.show({
@@ -120,12 +190,13 @@ const CreateCheckList = () => {
     setSelectedParts(selectedParts.filter((p) => p.part_id !== partId));
   };
 
+  // Handler for Step 2: Create Checklist (updated to include technician_id if needed)
   const handleSubmit = async () => {
     if (
-      !appointmentId ||
       !issueTypeId ||
       !issueDescription ||
-      !solutionApplied
+      !solutionApplied ||
+      selectedParts.length === 0
     ) {
       Toast.show({
         type: "error",
@@ -135,7 +206,7 @@ const CreateCheckList = () => {
     }
 
     const checklistData = {
-      appointment_id: appointmentId,
+      appointment_id: appointmentId, // Pre-selected from Step 1
       issue_type_id: issueTypeId,
       issue_description: issueDescription,
       solution_applied: solutionApplied,
@@ -144,7 +215,13 @@ const CreateCheckList = () => {
 
     try {
       const res = await dispatch(createCheckList(checklistData)).unwrap();
-    await dispatch(getCheckLists({ page: 1, limit: 10 }));
+      await dispatch(
+        getCheckLists({
+          page: 1,
+          limit: 10,
+          technician_id: userId as string,
+        })
+      );
       Toast.show({
         type: "success",
         text1: "Tạo checklist thành công!",
@@ -161,9 +238,10 @@ const CreateCheckList = () => {
 
   const getPartName = (partId: string) => {
     const part = parts.find((p) => p._id === partId);
-    return part ? `${part.part_name} - ${part.part_number} (${part.sellPrice} VND)` : "";
+    return part
+      ? `${part.part_name} - ${part.part_number} (${part.sellPrice} VND)`
+      : "";
   };
-
 
   return (
     <View style={styles.container}>
@@ -174,171 +252,203 @@ const CreateCheckList = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tạo Checklist</Text>
+        <Text style={styles.headerTitle}>
+          {currentStep === 1 ? "Check-in Xe" : "Tạo Checklist"}
+        </Text>
         <View style={{ width: 24 }} />
       </View>
 
+      {renderStepIndicator()}
+
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>
-          {/* Appointment Selection */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              <Ionicons name="calendar" size={16} /> Chọn lịch hẹn *
-            </Text>
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-              containerStyle={styles.dropdownContainer}
-              data={appointmentItems}
-              search
-              maxHeight={250}
-              labelField="label"
-              valueField="value"
-              placeholder={
-                appointmentsLoading ? "Đang tải..." : "Chọn lịch hẹn"
-              }
-              searchPlaceholder="Tìm kiếm lịch hẹn..."
-              value={appointmentId}
-              onChange={(item) => setAppointmentId(item.value)}
-            />
-          </View>
-<View style={styles.partsSection}>
-            <Text style={styles.sectionTitle}>
-              <Ionicons name="construct" size={18} /> Phụ tùng sử dụng
-            </Text>
-
-            <View style={styles.addPartForm}>
-              <View style={styles.partDropdownContainer}>
+          {currentStep === 1 ? (
+            // Step 1: Check-in Form
+            <>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="calendar" size={16} /> Chọn lịch hẹn *
+                </Text>
                 <Dropdown
                   style={styles.dropdown}
                   placeholderStyle={styles.placeholderStyle}
                   selectedTextStyle={styles.selectedTextStyle}
                   containerStyle={styles.dropdownContainer}
-                  data={partItems}
+                  data={appointmentItems}
                   search
                   maxHeight={250}
                   labelField="label"
                   valueField="value"
-                  placeholder={partsLoading ? "Đang tải..." : "Chọn phụ tùng"}
-                  searchPlaceholder="Tìm kiếm..."
-                  value={currentPartId}
-                  onChange={(item) => setCurrentPartId(item.value)}
+                  placeholder={
+                    appointmentsLoading ? "Đang tải..." : "Chọn lịch hẹn"
+                  }
+                  searchPlaceholder="Tìm kiếm lịch hẹn..."
+                  value={appointmentId}
+                  onChange={(item) => setAppointmentId(item.value)}
                 />
               </View>
-
-              <View style={styles.quantityContainer}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="car" size={16} /> Tình trạng xe ban đầu *
+                </Text>
                 <TextInput
-                  style={styles.quantityInput}
-                  value={currentQuantity}
-                  onChangeText={setCurrentQuantity}
-                  placeholder="SL"
-                  keyboardType="numeric"
+                  style={styles.textArea}
+                  value={initialVehicleCondition}
+                  onChangeText={setInitialVehicleCondition}
+                  placeholder="Nhập tình trạng xe ban đầu..."
+                  multiline
+                  numberOfLines={4}
                 />
               </View>
-
-              <TouchableOpacity style={styles.addButton} onPress={addPart}>
-                <Ionicons name="add-circle" size={24} color="#4CAF50" />
-              </TouchableOpacity>
-            </View>
-
-             {selectedParts.length > 0 && (
-              <View style={styles.selectedPartsList}>
-                {selectedParts.map((item, index) => (
-                  <View key={index} style={styles.partItem}>
-                    <View style={styles.partInfo}>
-                      <Text style={styles.partName}>
-                        {getPartName(item.part_id)}
-                      </Text>
-                      <Text style={styles.partQuantity}>
-                        Số lượng: {item.quantity}
-                      </Text>
-                      <Text style={styles.partPrice}>
-                        Giá: {parts.find(p => p._id === item.part_id)?.sellPrice} VND
-                      </Text>
-                    </View>
-                    <TouchableOpacity onPress={() => removePart(item.part_id)}>
-                      <Ionicons name="trash" size={20} color="#F44336" />
-                    </TouchableOpacity>
+            </>
+          ) : (
+            // Step 2: Checklist Creation Form (existing logic, with appointment pre-selected)
+            <>
+              <View style={styles.partsSection}>
+                <Text style={styles.sectionTitle}>
+                  <Ionicons name="construct" size={18} /> Phụ tùng sử dụng *
+                </Text>
+                <View style={styles.addPartForm}>
+                  <View style={styles.partDropdownContainer}>
+                    <Dropdown
+                      style={styles.dropdown}
+                      placeholderStyle={styles.placeholderStyle}
+                      selectedTextStyle={styles.selectedTextStyle}
+                      containerStyle={styles.dropdownContainer}
+                      data={partItems}
+                      search
+                      maxHeight={250}
+                      labelField="label"
+                      valueField="value"
+                      placeholder={
+                        partsLoading ? "Đang tải..." : "Chọn phụ tùng"
+                      }
+                      searchPlaceholder="Tìm kiếm..."
+                      value={currentPartId}
+                      onChange={(item) => setCurrentPartId(item.value)}
+                    />
                   </View>
-                ))}
+                  <View style={styles.quantityContainer}>
+                    <TextInput
+                      style={styles.quantityInput}
+                      value={currentQuantity}
+                      onChangeText={setCurrentQuantity}
+                      placeholder="SL"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <TouchableOpacity style={styles.addButton} onPress={addPart}>
+                    <Ionicons name="add-circle" size={24} color="#4CAF50" />
+                  </TouchableOpacity>
+                </View>
+                {selectedParts.length > 0 && (
+                  <View style={styles.selectedPartsList}>
+                    {selectedParts.map((item, index) => (
+                      <View key={index} style={styles.partItem}>
+                        <View style={styles.partInfo}>
+                          <Text style={styles.partName}>
+                            {getPartName(item.part_id)}
+                          </Text>
+                          <Text style={styles.partQuantity}>
+                            Số lượng: {item.quantity}
+                          </Text>
+                          <Text style={styles.partPrice}>
+                            Giá: {parts.find((p) => p._id === item.part_id)?.sellPrice} VND
+                          </Text>
+                        </View>
+                        <TouchableOpacity onPress={() => removePart(item.part_id)}>
+                          <Ionicons name="trash" size={20} color="#F44336" />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-            )}
-          </View>
-          {/* Issue Type */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              <Ionicons name="warning" size={16} /> Loại sự cố *
-            </Text>
-            <Dropdown
-              style={styles.dropdown}
-              placeholderStyle={styles.placeholderStyle}
-              selectedTextStyle={styles.selectedTextStyle}
-              containerStyle={styles.dropdownContainer}
-              data={issueTypeItems}
-              search
-              maxHeight={250}
-              labelField="label"
-              valueField="value"
-              placeholder={
-                issueTypesLoading ? "Đang tải..." : "Chọn loại sự cố"
-              }
-              searchPlaceholder="Tìm kiếm..."
-              value={issueTypeId}
-              onChange={(item) => setIssueTypeId(item.value)}
-            />
-          </View>
-
-          {/* Issue Description */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              <Ionicons name="document-text" size={16} /> Mô tả sự cố *
-            </Text>
-            <TextInput
-              style={styles.textArea}
-              value={issueDescription}
-              onChangeText={setIssueDescription}
-              placeholder="Nhập mô tả chi tiết sự cố..."
-              multiline
-              numberOfLines={4}
-            />
-          </View>
-
-          {/* Solution Applied */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>
-              <Ionicons name="checkmark-circle" size={16} /> Giải pháp áp dụng *
-            </Text>
-            <TextInput
-              style={styles.textArea}
-              value={solutionApplied}
-              onChangeText={setSolutionApplied}
-              placeholder="Nhập giải pháp đã áp dụng..."
-              multiline
-              numberOfLines={4}
-            />
-          </View>
-
-          {/* Parts Section */}
-          
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="warning" size={16} /> Loại sự cố *
+                </Text>
+                <Dropdown
+                  style={styles.dropdown}
+                  placeholderStyle={styles.placeholderStyle}
+                  selectedTextStyle={styles.selectedTextStyle}
+                  containerStyle={styles.dropdownContainer}
+                  data={issueTypeItems}
+                  search
+                  maxHeight={250}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={
+                    issueTypesLoading ? "Đang tải..." : "Chọn loại sự cố"
+                  }
+                  searchPlaceholder="Tìm kiếm..."
+                  value={issueTypeId}
+                  onChange={(item) => setIssueTypeId(item.value)}
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="document-text" size={16} /> Mô tả sự cố *
+                </Text>
+                <TextInput
+                  style={styles.textArea}
+                  value={issueDescription}
+                  onChangeText={setIssueDescription}
+                  placeholder="Nhập mô tả chi tiết sự cố..."
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>
+                  <Ionicons name="checkmark-circle" size={16} /> Giải pháp áp dụng *
+                </Text>
+                <TextInput
+                  style={styles.textArea}
+                  value={solutionApplied}
+                  onChangeText={setSolutionApplied}
+                  placeholder="Nhập giải pháp đã áp dụng..."
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.submitButton}
-          onPress={handleSubmit}
-          disabled={checklistLoading}
-        >
-          {checklistLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name="checkmark-done" size={20} color="#fff" />
-              <Text style={styles.submitButtonText}>Tạo Checklist</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        {currentStep === 1 ? (
+          <TouchableOpacity
+            style={styles.submitButton}
+            onPress={handleCheckIn}
+            disabled={appointmentsLoading}
+          >
+            {appointmentsLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-done" size={20} color="#fff" />
+                <Text style={styles.submitButtonText}>Check-in Xe</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.submitButton}
+            onPress={handleSubmit}
+            disabled={checklistLoading}
+          >
+            {checklistLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-done" size={20} color="#fff" />
+                <Text style={styles.submitButtonText}>Tạo Checklist</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -346,6 +456,7 @@ const CreateCheckList = () => {
 
 export default CreateCheckList;
 
+// Updated styles (added step indicator styles)
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -527,5 +638,47 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
     color: "white",
+  },
+  stepIndicator: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 20,
+    backgroundColor: "white",
+  },
+  stepItem: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  stepCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#E0E0E0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#E0E0E0",
+  },
+  stepCircleActive: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#4CAF50",
+  },
+  stepNumber: {
+    color: "#999",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  stepNumberActive: {
+    color: "white",
+  },
+  stepLine: {
+    width: 50,
+    height: 2,
+    backgroundColor: "#E0E0E0",
+    marginHorizontal: 10,
+  },
+  stepLineActive: {
+    backgroundColor: "#4CAF50",
   },
 });

@@ -14,6 +14,11 @@ interface CheckListItem {
   parts: Part[];
 }
 
+interface CheckInItem {
+  appointment_id: string;
+  initial_vehicle_condition: string;
+}
+
 export interface CheckList {
   _id: string;
   appointment_id: {
@@ -97,6 +102,21 @@ const initialState: CheckListState = {
   success: false,
   completing: false,
 };
+
+export const createCheckIn = createAsyncThunk(
+  "checklist/createCheckIn",
+  async (checkinData: CheckInItem, { rejectWithValue }) => {
+    try {
+      const response = await api.post("/checklist/checkin", checkinData);
+      console.log(response);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to create checkin"
+      );
+    }
+  }
+);
 
 export const createCheckList = createAsyncThunk(
   "checklist/createCheckList",
@@ -189,6 +209,21 @@ const checkListSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Create checkin
+      .addCase(createCheckIn.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+        state.success = false;
+      })
+      .addCase(createCheckIn.fulfilled, (state) => {
+        state.loading = false;
+        state.success = true;
+      })
+      .addCase(createCheckIn.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+        state.success = false;
+      })
       // Create checklist
       .addCase(createCheckList.pending, (state) => {
         state.loading = true;

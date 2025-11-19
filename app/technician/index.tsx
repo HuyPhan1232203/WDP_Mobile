@@ -47,7 +47,6 @@ const TechnicianCheckList = () => {
       loadChecklists(1, user._id);
     }
   }, [user?._id]);
-  console.log(checklists);
   const loadChecklists = async (page: number, userId: string) => {
     if (!userId) return;
 
@@ -55,7 +54,7 @@ const TechnicianCheckList = () => {
       await dispatch(
         getCheckLists({
           page,
-          limit: 10,
+          limit: 100,
           technician_id: userId,
         })
       ).unwrap();

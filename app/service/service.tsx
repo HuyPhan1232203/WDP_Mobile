@@ -68,9 +68,7 @@ const Service = () => {
       })
     );
   }, []);
-  const formatCurrency = (amount: number) => {
-    return `${amount.toLocaleString("vi-VN")} VND`;
-  };
+
   const formatDateForAPI = (date: Date) => {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -95,7 +93,7 @@ const Service = () => {
   }));
   console.log(JSON.stringify(services));
   const serviceItems = services?.map((service) => ({
-    label: `${service.service_name} - ${formatCurrency(service.base_price)}`,
+    label: `${service.service_name}`,
     value: service._id,
   }));
 

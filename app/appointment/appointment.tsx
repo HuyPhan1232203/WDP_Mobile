@@ -331,12 +331,12 @@ const AppointmentDetail = () => {
               {currentAppointment.service_type_id.estimated_duration} giờ
             </Text>
           </View>
-          <View style={styles.infoRow}>
+          {/* <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Chi phí dịch vụ</Text>
             <Text style={[styles.infoValue, styles.priceText]}>
               {formatCurrency(currentAppointment.service_type_id.base_price)}
             </Text>
-          </View>
+          </View> */}
           {currentAppointment.deposit_cost > 0 && (
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Đặt cọc</Text>
